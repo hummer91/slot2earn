@@ -253,9 +253,11 @@ def play_slot_machine():
 
         if user_data['level'] > previous_level:
             print(f"레벨업! 새로운 레벨: {user_data['level']}")
-        print(f"현재 잔액: ${user_data['balance']}")
+        
         print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
         print(f"총 사용 금액: ${user_data['total_spent']}, 현재 레벨: {user_data['level']}")
+        print(f"현재 슬롯 배팅 금액: ${total_bet}")
+        print(f"현재 잔액: ${user_data['balance']}")
         play_again = input("그만 플레이 하겠습니까? (y/n): ")
         if play_again.lower() == 'y':
             break
