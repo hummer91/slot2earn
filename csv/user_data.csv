@@ -1,3 +1,2 @@
-user_id,balance,total_spent,level,free_charges
-01,2800.0,1730,4,1
-02,0.0,9700,5,0
+user_id,balance,total_spent,level,free_charges,ad_free_charges,last_played_day
+02,15.0,3710,3,0,0,0

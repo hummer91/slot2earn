@@ -18,9 +18,9 @@ symbol_probabilities = {}
 # 페이라인 정보를 저장할 딕셔너리
 paylines = {}
 
-# 레벨 정보를 저장할 딕셔너리
+# 레벨 정보를 저장할 딕셔너리 (free_charges 제거)
 levels = {}
-free_charges = {}
+free_balances_per_level = {}
 
 def load_symbol_data():
     # CSV 파일에서 심볼 데이터를 불러오기
@@ -51,8 +51,8 @@ def load_paylines_data():
         exit()
 
 def load_levels_data():
-    # CSV 파일에서 레벨 데이터를 불러오기
-    global levels, free_charges
+    # CSV 파일에서 레벨 데이터를 불러오기 (free_charges 제거)
+    global levels, free_balances_per_level
     if os.path.exists(LEVELS_CSV):
         with open(LEVELS_CSV, mode='r') as file:
             reader = csv.DictReader(file)
@@ -61,7 +61,7 @@ def load_levels_data():
                 min_spent = int(row['min_spent'])
                 free_balance = int(row['free_balance'])
                 levels[level] = min_spent
-                free_charges[level] = free_balance
+                free_balances_per_level[level] = free_balance
     else:
         print(f"{LEVELS_CSV} 파일을 찾을 수 없습니다.")
         exit()
@@ -134,58 +134,70 @@ def load_user_data():
     # CSV 파일에서 사용자 데이터를 불러오기
     if os.path.exists(USER_CSV):
         with open(USER_CSV, mode='r') as file:
-            reader = csv.reader(file)
-            next(reader)  # 첫 번째 행 건너뛰기 (헤더)
+            reader = csv.DictReader(file)
             for row in reader:
-                user_id, balance, total_spent, level, free_charges_count = row
+                user_id = row['user_id']
+                balance = float(row['balance'])
+                total_spent = int(row['total_spent'])
+                level = int(row['level'])
+                free_charges = int(row['free_charges'])
+                ad_free_charges = int(row['ad_free_charges'])
+                last_played_day = int(row['last_played_day'])
                 users_data[user_id] = {
-                    "balance": float(balance),  # balance를 float으로 변환
-                    "total_spent": int(total_spent),
-                    "level": int(level),
-                    "spin_count": 0,   # 초기 릴 회전 횟수
-                    "free_charges": int(free_charges_count)  # 무료 충전 횟수
+                    "balance": balance,
+                    "total_spent": total_spent,
+                    "level": level,
+                    "spin_count": 0,
+                    "free_charges": free_charges,
+                    "ad_free_charges": ad_free_charges,
+                    "last_played_day": last_played_day
                 }
+    else:
+        print(f"{USER_CSV} 파일을 찾을 수 없습니다.")
+        exit()
 
 def save_user_data():
     # 사용자 데이터를 CSV 파일에 저장하기
     with open(USER_CSV, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['user_id', 'balance', 'total_spent', 'level', 'free_charges'])  # 헤더 추가
+        writer.writerow(['user_id', 'balance', 'total_spent', 'level', 'free_charges', 'ad_free_charges', 'last_played_day'])  # 헤더 추가
         for user_id, data in users_data.items():
-            writer.writerow([user_id, data['balance'], data['total_spent'], data['level'], data['free_charges']])
+            writer.writerow([user_id, data['balance'], data['total_spent'], data['level'], data['free_charges'], data['ad_free_charges'], data['last_played_day']])
 
 def get_user_data(user_id):
     # 사용자의 ID로 데이터를 가져오거나, 새로 생성
     if user_id not in users_data:
-        # 새로운 사용자 생성
         users_data[user_id] = {
-            "balance": 100,   # 초기 잔액
-            "total_spent": 0, # 초기 사용 금액
-            "level": 0,       # 초기 레벨
-            "spin_count": 0,   # 초기 릴 회전 횟수
-            "free_charges": 3  # 기본 무료 충전 횟수
+            "balance": 100,
+            "total_spent": 0,
+            "level": 0,
+            "spin_count": 0,
+            "free_charges": 3,  # 기본 무료 충전 횟수
+            "ad_free_charges": 3,  # 기본 광고 충전 횟수
+            "last_played_day": 0  # 0일로 초기화
         }
     return users_data[user_id]
 
+def update_user_charges(user_data):
+    # 무료 충전과 광고 충전 횟수 리셋
+    user_data['free_charges'] = 3  # 모든 유저에게 동일하게 3회 제공
+    user_data['ad_free_charges'] = 3  # 광고 충전도 3회로 고정
+
 def play_slot_machine():
-    user_id = input("사용자 ID를 입력하세요: ").strip().lower()  # 입력값 정리
+    user_id = input("사용자 ID를 입력하세요: ").strip().lower()
     
-    # CSV에서 사용자 데이터 로드
     load_user_data()
     
     if user_id == "admin":
-        # admin 계정으로 접속하면 기대값 계산
         calculate_expected_value()
-        return  # 관리자는 플레이를 하지 않고 종료
+        return
 
     user_data = get_user_data(user_id)
 
-    print(f"슬롯 머신에 오신 것을 환영합니다, {user_id}!")
     print(f"현재 잔액: ${user_data['balance']}")
-    print(f"현재 레벨: {user_data['level']} (총 사용 금액: ${user_data['total_spent']})")
-    print(f"무료 충전 횟수: {user_data['free_charges']}")
+    print(f"현재 레벨: {user_data['level']}")
+    print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
     
-    # 페이라인 선택
     while True:
         try:
             num_paylines = int(input("몇 개의 페이라인에 베팅하시겠습니까? (1-5): "))
@@ -197,66 +209,63 @@ def play_slot_machine():
             print("유효한 숫자를 입력하세요.")
     
     selected_paylines = list(range(1, num_paylines + 1))
-    base_bet = 10  # 기본 베팅 금액
-    total_bet = base_bet * num_paylines  # 총 베팅 금액
+    base_bet = 10
+    total_bet = base_bet * num_paylines
 
-    print(f"총 베팅 금액은 ${total_bet}입니다. (페이라인 수: {num_paylines})")
+    print(f"총 베팅 금액은 ${total_bet}입니다.")
     
-    while user_data['balance'] >= total_bet or user_data['free_charges'] > 0:
+    while user_data['balance'] >= total_bet or user_data['free_charges'] > 0 or user_data['ad_free_charges'] > 0:
         if user_data['balance'] < total_bet:
             if user_data['free_charges'] > 0:
-                # 무료 충전 실행
-                print("잔액이 부족합니다. 무료 충전 중...")
+                print("무료 충전 중...")
                 user_data['free_charges'] -= 1
-                user_data['balance'] += free_charges[user_data['level']]
+                user_data['balance'] += free_balances_per_level[user_data['level']]
                 print(f"무료 충전 완료! 현재 잔액: ${user_data['balance']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
+            elif user_data['ad_free_charges'] > 0:
+                print("광고 충전 중...")
+                user_data['ad_free_charges'] -= 1
+                user_data['balance'] += free_balances_per_level[user_data['level']]
+                print(f"광고 충전 완료! 현재 잔액: ${user_data['balance']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}")
             else:
-                print("잔액이 부족하고, 무료 충전 횟수도 없습니다. 게임 종료.")
+                user_data['last_played_day'] += 1
+                update_user_charges(user_data)
+                print(f"모든 충전이 소진되었습니다. 새로운 날로 이동. 현재 플레이한 날: {user_data['last_played_day']}")
                 break
 
-        input("슬롯을 돌리려면 Enter 키를 누르세요...")
+        input("Enter 키를 눌러 슬롯을 돌리세요...")
 
-        # 릴 회전
         reels = spin_slot_machine()
         display_reels(reels)
 
-        user_data['spin_count'] += 1  # 릴을 돌린 횟수 증가
-        user_data['total_spent'] += total_bet  # 총 사용 금액 증가
+        user_data['spin_count'] += 1
+        user_data['total_spent'] += total_bet
 
         winnings = calculate_win(reels, selected_paylines, total_bet)
         if winnings > 0:
-            print(f"축하합니다! 승리하셨습니다! 보상: {winnings} (당첨율 기준)")
+            print(f"축하합니다! 보상: {winnings}")
             user_data['balance'] += winnings
         else:
             print("아쉽게도, 다시 도전하세요.")
-            user_data['balance'] -= total_bet  # 패배 시 총 베팅 금액 차감
+            user_data['balance'] -= total_bet
         
-        # 레벨 업데이트
         previous_level = user_data['level']
         user_data['level'] = calculate_level(user_data['total_spent'])
 
-        # 레벨업 체크
         if user_data['level'] > previous_level:
-            print(f"*****축하합니다! 레벨업 하셨습니다! 새로운 레벨: {user_data['level']}*****")
-
+            print(f"레벨업! 새로운 레벨: {user_data['level']}")
         print(f"현재 잔액: ${user_data['balance']}")
         print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
         print(f"총 사용 금액: ${user_data['total_spent']}, 현재 레벨: {user_data['level']}")
-        
-        play_again = input("TO stop press n: ")
-        if play_again.lower() != 'n':
-            continue
-        else:
+        play_again = input("그만 플레이 하겠습니까? (y/n): ")
+        if play_again.lower() == 'y':
             break
+        print(f"======================================================================")
+
+    print(f"게임 종료. 잔액: ${user_data['balance']}, 레벨: {user_data['level']}, 남은 무료 충전 횟수: {user_data['free_charges']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
     
-    print(f"게임이 종료되었습니다, {user_id}. 감사합니다!")
-    print(f"최종 잔액: ${user_data['balance']}, 총 릴 돌린 횟수: {user_data['spin_count']}, 총 사용 금액: ${user_data['total_spent']}, 최종 레벨: {user_data['level']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
-    
-    # 게임 종료 후 사용자 데이터를 CSV 파일에 저장
     save_user_data()
 
 if __name__ == "__main__":
-    # 프로그램 시작 시 심볼 데이터, 페이라인 데이터, 레벨 데이터를 로드
     load_symbol_data()
     load_paylines_data()
     load_levels_data()
