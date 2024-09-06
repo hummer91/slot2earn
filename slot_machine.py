@@ -5,7 +5,7 @@ import os
 # 사용자 데이터 저장을 위한 딕셔너리
 users_data = {}
 
-CSV_FILE = "user_data.csv"
+USER_CSV = "user_data.csv"
 SYMBOLS_CSV = "symbols_data.csv"
 PAYLINES_CSV = "paylines_data.csv"
 LEVELS_CSV = "levels_data.csv"
@@ -64,7 +64,7 @@ def load_levels_data():
 
 def calculate_level(total_spent):
     # 총 사용 금액에 따른 레벨 계산
-    current_level = 1
+    current_level = 0
     for level, min_spent in sorted(levels, key=lambda x: x[1]):
         if total_spent >= min_spent:
             current_level = level
@@ -107,11 +107,31 @@ def calculate_win(reels, selected_paylines):
     
     return total_multiplier
 
+def calculate_expected_value():
+    # 각 심볼의 출현 확률을 총합으로 정규화
+    total_prob = sum(symbol_probabilities.values())
+    normalized_probabilities = {symbol: prob / total_prob for symbol, prob in symbol_probabilities.items()}
+
+    expected_value = 0
+
+    # 모든 페이라인에 대해 기대값 계산
+    for payline_id, positions in paylines.items():
+        line_ev = 0
+        for symbol, probability in normalized_probabilities.items():
+            win_probability = probability ** 3  # 당첨 확률은 각 심볼이 세 번 연속 등장할 확률
+            win_multiplier = symbol_multipliers[symbol]
+            line_ev += win_probability * win_multiplier
+
+        expected_value += line_ev
+
+    print(f"슬롯 머신의 기대값: {expected_value:.4f}")
+
 def load_user_data():
     # CSV 파일에서 사용자 데이터를 불러오기
-    if os.path.exists(CSV_FILE):
-        with open(CSV_FILE, mode='r') as file:
+    if os.path.exists(USER_CSV):
+        with open(USER_CSV, mode='r') as file:
             reader = csv.reader(file)
+            next(reader)  # 첫 번째 행 건너뛰기 (헤더)
             for row in reader:
                 user_id, balance, total_spent, level = row
                 users_data[user_id] = {
@@ -123,8 +143,9 @@ def load_user_data():
 
 def save_user_data():
     # 사용자 데이터를 CSV 파일에 저장하기
-    with open(CSV_FILE, mode='w', newline='') as file:
+    with open(USER_CSV, mode='w', newline='') as file:
         writer = csv.writer(file)
+        writer.writerow(['user_id', 'balance', 'total_spent', 'level'])  # 헤더 추가
         for user_id, data in users_data.items():
             writer.writerow([user_id, data['balance'], data['total_spent'], data['level']])
 
@@ -135,17 +156,22 @@ def get_user_data(user_id):
         users_data[user_id] = {
             "balance": 100,   # 초기 잔액
             "total_spent": 0, # 초기 사용 금액
-            "level": 1,       # 초기 레벨
+            "level": 0,       # 초기 레벨
             "spin_count": 0   # 초기 릴 회전 횟수
         }
     return users_data[user_id]
 
 def play_slot_machine():
-    user_id = input("사용자 ID를 입력하세요: ")
+    user_id = input("사용자 ID를 입력하세요: ").strip().lower()  # 입력값 정리
     
     # CSV에서 사용자 데이터 로드
     load_user_data()
     
+    if user_id == "admin":
+        # admin 계정으로 접속하면 기대값 계산
+        calculate_expected_value()
+        return  # 관리자는 플레이를 하지 않고 종료
+
     user_data = get_user_data(user_id)
 
     print(f"슬롯 머신에 오신 것을 환영합니다, {user_id}!")
@@ -189,7 +215,12 @@ def play_slot_machine():
             user_data['balance'] -= total_bet  # 패배 시 총 베팅 금액 차감
         
         # 레벨 업데이트
+        previous_level = user_data['level']
         user_data['level'] = calculate_level(user_data['total_spent'])
+
+        # 레벨업 체크
+        if user_data['level'] > previous_level:
+            print(f"*****축하합니다! 레벨업 하셨습니다! 새로운 레벨: {user_data['level']}*****")
 
         print(f"현재 잔액: ${user_data['balance']}")
         print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
@@ -199,8 +230,10 @@ def play_slot_machine():
             print("잔액이 부족합니다. 게임 종료.")
             break
         
-        play_again = input("다시 플레이하시겠습니까? (y/n): ")
-        if play_again.lower() != 'y':
+        play_again = input("TO stop press n: ")
+        if play_again.lower() != 'n':
+            continue
+        else:
             break
     
     print(f"게임이 종료되었습니다, {user_id}. 감사합니다!")
@@ -216,15 +249,17 @@ if __name__ == "__main__":
     load_levels_data()
     play_slot_machine()
 
-# 추가된 기능 설명
+# if __name__ == "__main__":
+#     # 프로그램 시작 시 심볼 데이터, 페이라인 데이터, 레벨 데이터를 로드
+#     load_symbol_data()
+#     load_paylines_data()
+#     load_levels_data()
+#     play_slot_machine()
 
-# 	1.	사용자 데이터 구조 업데이트:
-# 	•	사용자 데이터에 total_spent(여태까지 슬롯머신에 사용한 비용)과 level(현재 레벨)을 추가했습니다.
-# 	2.	레벨 계산 기능 (calculate_level):
-# 	•	calculate_level 함수는 사용자가 사용한 총 금액을 기반으로 현재 레벨을 결정합니다.
-# 	•	levels_data.csv 파일에서 레벨 기준을 로드하고, 사용 금액에 따라 적절한 레벨을 설정합니다.
-# 	3.	CSV 파일 업데이트 및 로드:
-# 	•	user_data.csv 파일이 각 사용자의 ID, 잔액, 사용 금액, 레벨을 저장합니다.
-# 	•	levels_data.csv 파일은 레벨과 최소 사용 금액을 정의하고, 프로그램 시작 시 이를 로드합니다.
-# 	4.	게임 플레이 업데이트:
-# 	•	게임을 플레이할 때마다 사용자가 지출한 금액이 업데이트되고, 지출 금액에 따라 사용자의 레벨도 자동으로 업데이트됩니다.
+# 	1.	기대값 계산 함수 (calculate_expected_value):
+# 	•	이 함수는 각 심볼의 배당률과 출현 확률을 기반으로 전체 슬롯 머신 게임의 기대값을 계산합니다.
+# 	•	각 페이라인에 대해 당첨될 확률을 계산하고, 해당 확률에 보상금을 곱한 후 모든 페이라인에 대해 합산합니다.
+# 	2.	관리자 전용 기능:
+# 	•	사용자가 “admin” 계정으로 로그인하면 calculate_expected_value 함수가 자동으로 호출되어 기대값을 출력합니다.
+# 	3.	기대값 출력:
+# 	•	기대값은 슬롯 머신이 얼마나 유리한지, 또는 플레이어가 장기적으로 얼마나 많은 돈을 잃거나 얻을 수 있는지를 나타내는 지표입니다.
