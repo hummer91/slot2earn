@@ -88,9 +88,9 @@ def display_reels(reels):
         print(" | ".join(row))
     print()
 
-def calculate_win(reels, selected_paylines):
+def calculate_win(reels, selected_paylines, total_bet):
     # 슬롯 머신에서 당첨 배수를 계산하는 함수
-    total_multiplier = 0
+    total_winnings = 0
     winning_lines = []
 
     # 선택한 페이라인에서만 승리 계산
@@ -101,11 +101,11 @@ def calculate_win(reels, selected_paylines):
             winning_symbol = reels[positions[0][0]][positions[0][1]]
             winning_lines.append(winning_symbol)
 
-    # 각 승리 라인에 대해 당첨 심볼의 배당률을 합산
+    # 각 승리 라인에 대해 당첨 심볼의 배당률을 퍼센트로 계산
     for symbol in winning_lines:
-        total_multiplier += symbol_multipliers[symbol]
+        total_winnings += (symbol_multipliers[symbol] / 100) * total_bet
     
-    return total_multiplier
+    return total_winnings
 
 def calculate_expected_value():
     # 각 심볼의 출현 확률을 총합으로 정규화
@@ -119,7 +119,7 @@ def calculate_expected_value():
         line_ev = 0
         for symbol, probability in normalized_probabilities.items():
             win_probability = probability ** 3  # 당첨 확률은 각 심볼이 세 번 연속 등장할 확률
-            win_multiplier = symbol_multipliers[symbol]
+            win_multiplier = symbol_multipliers[symbol] / 100  # 배당률을 퍼센트로 해석
             line_ev += win_probability * win_multiplier
 
         expected_value += line_ev
@@ -205,10 +205,9 @@ def play_slot_machine():
         user_data['spin_count'] += 1  # 릴을 돌린 횟수 증가
         user_data['total_spent'] += total_bet  # 총 사용 금액 증가
 
-        multiplier = calculate_win(reels, selected_paylines)
-        if multiplier > 0:
-            winnings = total_bet * multiplier
-            print(f"축하합니다! 승리하셨습니다! 보상: {winnings} (배당률 {multiplier}배)")
+        winnings = calculate_win(reels, selected_paylines, total_bet)
+        if winnings > 0:
+            print(f"축하합니다! 승리하셨습니다! 보상: {winnings} (당첨율 기준)")
             user_data['balance'] += winnings
         else:
             print("아쉽게도, 다시 도전하세요.")
@@ -249,17 +248,6 @@ if __name__ == "__main__":
     load_levels_data()
     play_slot_machine()
 
-# if __name__ == "__main__":
-#     # 프로그램 시작 시 심볼 데이터, 페이라인 데이터, 레벨 데이터를 로드
-#     load_symbol_data()
-#     load_paylines_data()
-#     load_levels_data()
-#     play_slot_machine()
 
-# 	1.	기대값 계산 함수 (calculate_expected_value):
-# 	•	이 함수는 각 심볼의 배당률과 출현 확률을 기반으로 전체 슬롯 머신 게임의 기대값을 계산합니다.
-# 	•	각 페이라인에 대해 당첨될 확률을 계산하고, 해당 확률에 보상금을 곱한 후 모든 페이라인에 대해 합산합니다.
-# 	2.	관리자 전용 기능:
-# 	•	사용자가 “admin” 계정으로 로그인하면 calculate_expected_value 함수가 자동으로 호출되어 기대값을 출력합니다.
-# 	3.	기대값 출력:
-# 	•	기대값은 슬롯 머신이 얼마나 유리한지, 또는 플레이어가 장기적으로 얼마나 많은 돈을 잃거나 얻을 수 있는지를 나타내는 지표입니다.
+	# 1.	보상 배수 수정: calculate_win 함수에서 multiplier를 100으로 나누어 보상금을 백분율로 계산하도록 변경했습니다.
+	# 2.	변경된 구조 반영: play_slot_machine 함수에서 total_bet을 calculate_win 함수로 전달하여 백분율을 사용해 보상금을 계산했습니다.
