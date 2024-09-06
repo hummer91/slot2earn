@@ -3,7 +3,16 @@ import csv
 import os
 
 # 사용자 데이터 저장을 위한 딕셔너리
+# 사용자 데이터 저장을 위한 딕셔너리
 users_data = {}
+
+# 레벨별 무료 충전 금액 정의 (예시)
+level_free_balances = {
+    0: 100,  # 레벨 0의 경우 무료 충전 금액 100
+    1: 200,  # 레벨 1의 경우 무료 충전 금액 200
+    2: 300,  # 레벨 2의 경우 무료 충전 금액 300
+    # 추가 레벨에 대해서도 정의 가능
+}
 
 USER_CSV = "user_data.csv"
 SYMBOLS_CSV = "symbols_data.csv"
@@ -126,6 +135,7 @@ def calculate_expected_value():
 
     print(f"슬롯 머신의 기대값: {expected_value:.4f}")
 
+# 사용자 데이터를 불러올 때 무료 충전 횟수를 추가
 def load_user_data():
     # CSV 파일에서 사용자 데이터를 불러오기
     if os.path.exists(USER_CSV):
@@ -133,21 +143,22 @@ def load_user_data():
             reader = csv.reader(file)
             next(reader)  # 첫 번째 행 건너뛰기 (헤더)
             for row in reader:
-                user_id, balance, total_spent, level = row
+                user_id, balance, total_spent, level, free_charges = row
                 users_data[user_id] = {
                     "balance": float(balance),  # balance를 float으로 변환
                     "total_spent": int(total_spent),
                     "level": int(level),
-                    "spin_count": 0   # 초기 릴 회전 횟수
+                    "spin_count": 0,   # 초기 릴 회전 횟수
+                    "free_charges": int(free_charges)  # 무료 충전 횟수
                 }
 
 def save_user_data():
     # 사용자 데이터를 CSV 파일에 저장하기
     with open(USER_CSV, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['user_id', 'balance', 'total_spent', 'level'])  # 헤더 추가
+        writer.writerow(['user_id', 'balance', 'total_spent', 'level', 'free_charges'])  # 헤더 추가
         for user_id, data in users_data.items():
-            writer.writerow([user_id, data['balance'], data['total_spent'], data['level']])
+            writer.writerow([user_id, data['balance'], data['total_spent'], data['level'], data['free_charges']])
 
 def get_user_data(user_id):
     # 사용자의 ID로 데이터를 가져오거나, 새로 생성
@@ -177,6 +188,7 @@ def play_slot_machine():
     print(f"슬롯 머신에 오신 것을 환영합니다, {user_id}!")
     print(f"현재 잔액: ${user_data['balance']}")
     print(f"현재 레벨: {user_data['level']} (총 사용 금액: ${user_data['total_spent']})")
+    print(f"무료 충전 횟수: {user_data['free_charges']}")
     
     # 페이라인 선택
     while True:
@@ -195,7 +207,18 @@ def play_slot_machine():
 
     print(f"총 베팅 금액은 ${total_bet}입니다. (페이라인 수: {num_paylines})")
     
-    while user_data['balance'] >= total_bet:
+    while user_data['balance'] >= total_bet or user_data['free_charges'] > 0:
+        if user_data['balance'] < total_bet:
+            if user_data['free_charges'] > 0:
+                # 무료 충전 실행
+                print("잔액이 부족합니다. 무료 충전 중...")
+                user_data['free_charges'] -= 1
+                user_data['balance'] += level_free_balances[user_data['level']]
+                print(f"무료 충전 완료! 현재 잔액: ${user_data['balance']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
+            else:
+                print("잔액이 부족하고, 무료 충전 횟수도 없습니다. 게임 종료.")
+                break
+
         input("슬롯을 돌리려면 Enter 키를 누르세요...")
 
         # 릴 회전
@@ -225,10 +248,6 @@ def play_slot_machine():
         print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
         print(f"총 사용 금액: ${user_data['total_spent']}, 현재 레벨: {user_data['level']}")
         
-        if user_data['balance'] < total_bet:
-            print("잔액이 부족합니다. 게임 종료.")
-            break
-        
         play_again = input("TO stop press n: ")
         if play_again.lower() != 'n':
             continue
@@ -236,7 +255,7 @@ def play_slot_machine():
             break
     
     print(f"게임이 종료되었습니다, {user_id}. 감사합니다!")
-    print(f"최종 잔액: ${user_data['balance']}, 총 릴 돌린 횟수: {user_data['spin_count']}, 총 사용 금액: ${user_data['total_spent']}, 최종 레벨: {user_data['level']}")
+    print(f"최종 잔액: ${user_data['balance']}, 총 릴 돌린 횟수: {user_data['spin_count']}, 총 사용 금액: ${user_data['total_spent']}, 최종 레벨: {user_data['level']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
     
     # 게임 종료 후 사용자 데이터를 CSV 파일에 저장
     save_user_data()

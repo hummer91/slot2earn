@@ -1,3 +1,2 @@
-user_id,balance,total_spent,level
-01,8900,110,2
-admin,50,50,1
+user_id,balance,total_spent,level,free_charges
+01,2575.0,1180,4,1
