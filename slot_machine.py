@@ -13,7 +13,7 @@ PAYLINES_CSV = "paylines_data.csv"
 symbol_multipliers = {}
 symbol_probabilities = {}
 
-# 페이라인 정보를 저장할 리스트
+# 페이라인 정보를 저장할 딕셔너리
 paylines = {}
 
 def load_symbol_data():
@@ -68,10 +68,12 @@ def calculate_win(reels, selected_paylines):
     # 선택한 페이라인에서만 승리 계산
     for line in selected_paylines:
         positions = paylines[line]
+        # 선택된 페이라인에 있는 모든 위치가 같은 심볼이면 승리
         if reels[positions[0][0]][positions[0][1]] == reels[positions[1][0]][positions[1][1]] == reels[positions[2][0]][positions[2][1]]:
-            winning_lines.append(reels[positions[0][0]][positions[0][1]])
+            winning_symbol = reels[positions[0][0]][positions[0][1]]
+            winning_lines.append(winning_symbol)
 
-    # 당첨 심볼의 배당률을 합산
+    # 각 승리 라인에 대해 당첨 심볼의 배당률을 합산
     for symbol in winning_lines:
         total_multiplier += symbol_multipliers[symbol]
     
@@ -174,12 +176,3 @@ if __name__ == "__main__":
     load_symbol_data()
     load_paylines_data()
     play_slot_machine()
-
-# 추가된 기능 설명
-
-# 	1.	심볼 데이터 로드 (load_symbol_data):
-# 	•	symbols_data.csv 파일에서 각 심볼의 등장 확률과 배당률을 읽어옵니다.
-# 	2.	페이라인 데이터 로드 (load_paylines_data):
-# 	•	paylines_data.csv 파일에서 각 페이라인의 위치 정보를 읽어옵니다. 이 정보를 사용하여 선택된 페이라인에 따라 승리 여부를 계산합니다.
-# 	3.	당첨 계산 (calculate_win):
-# 	•	선택된 페이라인에서만 승리 여부를 확인하고, 해당 심볼의 배당률을 바탕으로 총 배당률을 계산합니다.
