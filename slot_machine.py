@@ -7,10 +7,14 @@ users_data = {}
 
 CSV_FILE = "users_data.csv"
 SYMBOLS_CSV = "symbols_data.csv"
+PAYLINES_CSV = "paylines_data.csv"
 
 # 심볼과 그들의 배당률 및 등장 확률을 저장할 딕셔너리
 symbol_multipliers = {}
 symbol_probabilities = {}
+
+# 페이라인 정보를 저장할 리스트
+paylines = {}
 
 def load_symbol_data():
     # CSV 파일에서 심볼 데이터를 불러오기
@@ -24,6 +28,20 @@ def load_symbol_data():
                 symbol_probabilities[symbol] = int(row['probability'])
     else:
         print(f"{SYMBOLS_CSV} 파일을 찾을 수 없습니다.")
+        exit()
+
+def load_paylines_data():
+    # CSV 파일에서 페이라인 데이터를 불러오기
+    global paylines
+    if os.path.exists(PAYLINES_CSV):
+        with open(PAYLINES_CSV, mode='r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                payline_id = int(row['id'])
+                positions = row['positions'].split(';')
+                paylines[payline_id] = [tuple(map(int, pos.split('-'))) for pos in positions]
+    else:
+        print(f"{PAYLINES_CSV} 파일을 찾을 수 없습니다.")
         exit()
 
 def spin_slot_machine():
@@ -47,19 +65,11 @@ def calculate_win(reels, selected_paylines):
     total_multiplier = 0
     winning_lines = []
 
-    # 페이라인에 따른 당첨 계산
-    paylines = {
-        1: [reels[0][0], reels[0][1], reels[0][2]],  # 첫 번째 행
-        2: [reels[1][0], reels[1][1], reels[1][2]],  # 두 번째 행
-        3: [reels[2][0], reels[2][1], reels[2][2]],  # 세 번째 행
-        4: [reels[0][0], reels[1][1], reels[2][2]],  # 왼쪽 위에서 오른쪽 아래 대각선
-        5: [reels[0][2], reels[1][1], reels[2][0]],  # 오른쪽 위에서 왼쪽 아래 대각선
-    }
-
     # 선택한 페이라인에서만 승리 계산
     for line in selected_paylines:
-        if paylines[line][0] == paylines[line][1] == paylines[line][2]:
-            winning_lines.append(paylines[line][0])
+        positions = paylines[line]
+        if reels[positions[0][0]][positions[0][1]] == reels[positions[1][0]][positions[1][1]] == reels[positions[2][0]][positions[2][1]]:
+            winning_lines.append(reels[positions[0][0]][positions[0][1]])
 
     # 당첨 심볼의 배당률을 합산
     for symbol in winning_lines:
@@ -111,10 +121,10 @@ def play_slot_machine():
     while True:
         try:
             num_paylines = int(input("몇 개의 페이라인에 베팅하시겠습니까? (1-5): "))
-            if 1 <= num_paylines <= 5:
+            if 1 <= num_paylines <= len(paylines):
                 break
             else:
-                print("1에서 5 사이의 숫자를 입력하세요.")
+                print(f"1에서 {len(paylines)} 사이의 숫자를 입력하세요.")
         except ValueError:
             print("유효한 숫자를 입력하세요.")
     
@@ -160,18 +170,16 @@ def play_slot_machine():
     save_user_data()
 
 if __name__ == "__main__":
-    # 프로그램 시작 시 심볼 데이터를 로드
+    # 프로그램 시작 시 심볼 데이터와 페이라인 데이터를 로드
     load_symbol_data()
+    load_paylines_data()
     play_slot_machine()
 
-# 업데이트된 기능 설명
+# 추가된 기능 설명
 
 # 	1.	심볼 데이터 로드 (load_symbol_data):
-# 	•	symbols_data.csv 파일에서 각 심볼의 등장 확률과 배당률을 읽어와 symbol_multipliers와 symbol_probabilities 딕셔너리에 저장합니다.
-# 	•	이 데이터는 게임이 시작될 때 한번만 로드됩니다.
-# 	2.	릴 회전 기능 (spin_slot_machine):
-# 	•	random.choices() 함수를 사용하여 각 심볼의 확률에 따라 3x3 슬롯의 각 위치에 무작위로 심볼을 배치합니다. 여기서 weights는 각 심볼의 등장 확률입니다.
+# 	•	symbols_data.csv 파일에서 각 심볼의 등장 확률과 배당률을 읽어옵니다.
+# 	2.	페이라인 데이터 로드 (load_paylines_data):
+# 	•	paylines_data.csv 파일에서 각 페이라인의 위치 정보를 읽어옵니다. 이 정보를 사용하여 선택된 페이라인에 따라 승리 여부를 계산합니다.
 # 	3.	당첨 계산 (calculate_win):
-# 	•	선택된 페이라인에 대해서만 승리 여부를 계산하고, 해당 심볼의 배당률을 바탕으로 총 배당률을 계산합니다.
-# 	4.	유연한 데이터 관리:
-# 	•	심볼과 관련된 모든 데이터는 CSV 파일을 통해 관리되므로, 새로운 심볼을 추가하거나 배당률과
+# 	•	선택된 페이라인에서만 승리 여부를 확인하고, 해당 심볼의 배당률을 바탕으로 총 배당률을 계산합니다.
