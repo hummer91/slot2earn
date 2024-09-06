@@ -135,7 +135,7 @@ def load_user_data():
             for row in reader:
                 user_id, balance, total_spent, level = row
                 users_data[user_id] = {
-                    "balance": int(balance),
+                    "balance": float(balance),  # balance를 float으로 변환
                     "total_spent": int(total_spent),
                     "level": int(level),
                     "spin_count": 0   # 초기 릴 회전 횟수
@@ -249,5 +249,4 @@ if __name__ == "__main__":
     play_slot_machine()
 
 
-	# 1.	보상 배수 수정: calculate_win 함수에서 multiplier를 100으로 나누어 보상금을 백분율로 계산하도록 변경했습니다.
-	# 2.	변경된 구조 반영: play_slot_machine 함수에서 total_bet을 calculate_win 함수로 전달하여 백분율을 사용해 보상금을 계산했습니다.
+	# 1.		•	balance 값의 타입 변환: balance 값을 불러올 때 int 대신 float으로 변환합니다.
