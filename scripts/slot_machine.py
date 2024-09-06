@@ -2,22 +2,14 @@ import random
 import csv
 import os
 
-# 사용자 데이터 저장을 위한 딕셔너리
+# 파일 경로 설정
+USER_CSV = "csv/user_data.csv"
+SYMBOLS_CSV = "csv/symbols_data.csv"
+PAYLINES_CSV = "csv/paylines_data.csv"
+LEVELS_CSV = "csv/levels_data.csv"
+
 # 사용자 데이터 저장을 위한 딕셔너리
 users_data = {}
-
-# 레벨별 무료 충전 금액 정의 (예시)
-level_free_balances = {
-    0: 100,  # 레벨 0의 경우 무료 충전 금액 100
-    1: 200,  # 레벨 1의 경우 무료 충전 금액 200
-    2: 300,  # 레벨 2의 경우 무료 충전 금액 300
-    # 추가 레벨에 대해서도 정의 가능
-}
-
-USER_CSV = "user_data.csv"
-SYMBOLS_CSV = "symbols_data.csv"
-PAYLINES_CSV = "paylines_data.csv"
-LEVELS_CSV = "levels_data.csv"
 
 # 심볼과 그들의 배당률 및 등장 확률을 저장할 딕셔너리
 symbol_multipliers = {}
@@ -26,8 +18,9 @@ symbol_probabilities = {}
 # 페이라인 정보를 저장할 딕셔너리
 paylines = {}
 
-# 레벨 정보를 저장할 리스트
-levels = []
+# 레벨 정보를 저장할 딕셔너리
+levels = {}
+free_charges = {}
 
 def load_symbol_data():
     # CSV 파일에서 심볼 데이터를 불러오기
@@ -59,14 +52,16 @@ def load_paylines_data():
 
 def load_levels_data():
     # CSV 파일에서 레벨 데이터를 불러오기
-    global levels
+    global levels, free_charges
     if os.path.exists(LEVELS_CSV):
         with open(LEVELS_CSV, mode='r') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 level = int(row['level'])
                 min_spent = int(row['min_spent'])
-                levels.append((level, min_spent))
+                free_balance = int(row['free_balance'])
+                levels[level] = min_spent
+                free_charges[level] = free_balance
     else:
         print(f"{LEVELS_CSV} 파일을 찾을 수 없습니다.")
         exit()
@@ -74,7 +69,7 @@ def load_levels_data():
 def calculate_level(total_spent):
     # 총 사용 금액에 따른 레벨 계산
     current_level = 0
-    for level, min_spent in sorted(levels, key=lambda x: x[1]):
+    for level, min_spent in sorted(levels.items(), key=lambda x: x[1]):
         if total_spent >= min_spent:
             current_level = level
         else:
@@ -135,7 +130,6 @@ def calculate_expected_value():
 
     print(f"슬롯 머신의 기대값: {expected_value:.4f}")
 
-# 사용자 데이터를 불러올 때 무료 충전 횟수를 추가
 def load_user_data():
     # CSV 파일에서 사용자 데이터를 불러오기
     if os.path.exists(USER_CSV):
@@ -143,13 +137,13 @@ def load_user_data():
             reader = csv.reader(file)
             next(reader)  # 첫 번째 행 건너뛰기 (헤더)
             for row in reader:
-                user_id, balance, total_spent, level, free_charges = row
+                user_id, balance, total_spent, level, free_charges_count = row
                 users_data[user_id] = {
                     "balance": float(balance),  # balance를 float으로 변환
                     "total_spent": int(total_spent),
                     "level": int(level),
                     "spin_count": 0,   # 초기 릴 회전 횟수
-                    "free_charges": int(free_charges)  # 무료 충전 횟수
+                    "free_charges": int(free_charges_count)  # 무료 충전 횟수
                 }
 
 def save_user_data():
@@ -168,7 +162,8 @@ def get_user_data(user_id):
             "balance": 100,   # 초기 잔액
             "total_spent": 0, # 초기 사용 금액
             "level": 0,       # 초기 레벨
-            "spin_count": 0   # 초기 릴 회전 횟수
+            "spin_count": 0,   # 초기 릴 회전 횟수
+            "free_charges": 3  # 기본 무료 충전 횟수
         }
     return users_data[user_id]
 
@@ -213,7 +208,7 @@ def play_slot_machine():
                 # 무료 충전 실행
                 print("잔액이 부족합니다. 무료 충전 중...")
                 user_data['free_charges'] -= 1
-                user_data['balance'] += level_free_balances[user_data['level']]
+                user_data['balance'] += free_charges[user_data['level']]
                 print(f"무료 충전 완료! 현재 잔액: ${user_data['balance']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
             else:
                 print("잔액이 부족하고, 무료 충전 횟수도 없습니다. 게임 종료.")
@@ -266,6 +261,3 @@ if __name__ == "__main__":
     load_paylines_data()
     load_levels_data()
     play_slot_machine()
-
-
-	# 1.		•	balance 값의 타입 변환: balance 값을 불러올 때 int 대신 float으로 변환합니다.
