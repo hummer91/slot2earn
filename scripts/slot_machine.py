@@ -5,8 +5,12 @@ import os
 # 파일 경로 설정
 USER_CSV = "csv/user_data.csv"
 SYMBOLS_CSV = "csv/symbols_data.csv"
-PAYLINES_CSV = "csv/paylines_data.csv"
 LEVELS_CSV = "csv/levels_data.csv"
+
+# 페이라인 CSV 파일 경로 설정
+PAYLINES_CSV_3x3 = "csv/paylines_3x3.csv"
+PAYLINES_CSV_3x4 = "csv/paylines_3x4.csv"
+PAYLINES_CSV_3x5 = "csv/paylines_3x5.csv"
 
 # 사용자 데이터 저장을 위한 딕셔너리
 users_data = {}
@@ -36,18 +40,29 @@ def load_symbol_data():
         print(f"{SYMBOLS_CSV} 파일을 찾을 수 없습니다.")
         exit()
 
-def load_paylines_data():
+def load_paylines_data(board_size):
     # CSV 파일에서 페이라인 데이터를 불러오기
     global paylines
-    if os.path.exists(PAYLINES_CSV):
-        with open(PAYLINES_CSV, mode='r') as file:
+    paylines.clear()
+    if board_size == (3, 3):
+        csv_file = PAYLINES_CSV_3x3
+    elif board_size == (3, 4):
+        csv_file = PAYLINES_CSV_3x4
+    elif board_size == (3, 5):
+        csv_file = PAYLINES_CSV_3x5
+    else:
+        print("지원되지 않는 보드 크기입니다.")
+        exit()
+
+    if os.path.exists(csv_file):
+        with open(csv_file, mode='r') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 payline_id = int(row['id'])
                 positions = row['positions'].split(';')
                 paylines[payline_id] = [tuple(map(int, pos.split('-'))) for pos in positions]
     else:
-        print(f"{PAYLINES_CSV} 파일을 찾을 수 없습니다.")
+        print(f"{csv_file} 파일을 찾을 수 없습니다.")
         exit()
 
 def load_levels_data():
@@ -100,14 +115,20 @@ def calculate_win(reels, selected_paylines, total_bet):
     # 선택한 페이라인에서만 승리 계산
     for line in selected_paylines:
         positions = paylines[line]
-        # 선택된 페이라인에 있는 모든 위치가 같은 심볼이면 승리
-        if reels[positions[0][0]][positions[0][1]] == reels[positions[1][0]][positions[1][1]] == reels[positions[2][0]][positions[2][1]]:
-            winning_symbol = reels[positions[0][0]][positions[0][1]]
-            winning_lines.append(winning_symbol)
+        symbols_in_line = [reels[row][col] for row, col in positions]
+        
+        # 4개의 연속된 항목이 모두 같은 경우
+        if len(set(symbols_in_line)) == 1:
+            winning_symbol = symbols_in_line[0]
+            winning_lines.append((winning_symbol, 1.0))  # 100% 당첨
+        # 3개의 연속된 항목이 같은 경우
+        elif len(set(symbols_in_line[:3])) == 1 or len(set(symbols_in_line[1:])) == 1:
+            winning_symbol = symbols_in_line[0] if len(set(symbols_in_line[:3])) == 1 else symbols_in_line[1]
+            winning_lines.append((winning_symbol, 0.5))  # 50% 당첨
 
     # 각 승리 라인에 대해 당첨 심볼의 배당률을 퍼센트로 계산
-    for symbol in winning_lines:
-        total_winnings += (symbol_multipliers[symbol] / 100) * total_bet
+    for symbol, multiplier in winning_lines:
+        total_winnings += (symbol_multipliers[symbol] / 100) * total_bet * multiplier
     
     return total_winnings
 
@@ -197,7 +218,16 @@ def play_slot_machine():
     print(f"현재 잔액: ${user_data['balance']}")
     print(f"현재 레벨: {user_data['level']}")
     print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
+            
+        # Determine board size based on level
+    if user_data['level'] >= 60:
+        board_size = (3, 5)  # 3 rows, 5 columns
+    elif user_data['level'] >= 30:
+        board_size = (3, 4)  # 3 rows, 4 columns
+    else:
+        board_size = (3, 3)  # 3 rows, 3 columns
     
+    load_paylines_data(board_size)  # Load paylines for the current board size
     while True:
         try:
             num_paylines = int(input("몇 개의 페이라인에 베팅하시겠습니까? (1-5): "))
@@ -233,15 +263,7 @@ def play_slot_machine():
                 break
         
         input("Enter 키를 눌러 슬롯을 돌리세요...")
-        
-        # Determine board size based on level
-        if user_data['level'] >= 60:
-            board_size = (3, 5)  # 3 rows, 5 columns
-        elif user_data['level'] >= 30:
-            board_size = (3, 4)  # 3 rows, 4 columns
-        else:
-            board_size = (3, 3)  # 3 rows, 3 columns
-        
+
         reels = spin_slot_machine(board_size)
         display_reels(reels)
 
@@ -261,6 +283,14 @@ def play_slot_machine():
 
         if user_data['level'] > previous_level:
             print(f"레벨업! 새로운 레벨: {user_data['level']}")
+            # Reload paylines if level changes
+            if user_data['level'] >= 60:
+                board_size = (3, 5)
+            elif user_data['level'] >= 30:
+                board_size = (3, 4)
+            else:
+                board_size = (3, 3)
+            load_paylines_data(board_size)
 
         print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
         print(f"총 사용 금액: ${user_data['total_spent']}, 현재 레벨: {user_data['level']}")
@@ -278,6 +308,5 @@ def play_slot_machine():
 
 if __name__ == "__main__":
     load_symbol_data()
-    load_paylines_data()
     load_levels_data()
     play_slot_machine()
