@@ -76,21 +76,22 @@ def calculate_level(total_spent):
             break
     return current_level
 
-def spin_slot_machine():
-    # 3x3 슬롯 머신 릴을 무작위로 회전
+def spin_slot_machine(board_size):
+    # 슬롯 머신 릴을 무작위로 회전
     reels = []
     symbols = list(symbol_probabilities.keys())
     weights = list(symbol_probabilities.values())
-    for _ in range(3):
-        row = random.choices(symbols, weights, k=3)
+    for _ in range(board_size[0]):
+        row = random.choices(symbols, weights, k=board_size[1])
         reels.append(row)
     return reels
 
 def display_reels(reels):
-    # 3x3 릴 결과를 출력
+    # 릴 결과를 출력
     for row in reels:
         print(" | ".join(row))
     print()
+
 
 def calculate_win(reels, selected_paylines, total_bet):
     # 슬롯 머신에서 당첨 배수를 계산하는 함수
@@ -231,10 +232,18 @@ def play_slot_machine():
                 update_user_charges(user_data)
                 print(f"모든 충전이 소진되었습니다. 새로운 날로 이동. 현재 플레이한 날: {user_data['last_played_day']}")
                 break
-
+        
         input("Enter 키를 눌러 슬롯을 돌리세요...")
-
-        reels = spin_slot_machine()
+        
+        # Determine board size based on level
+        if user_data['level'] >= 60:
+            board_size = (5, 3)
+        elif user_data['level'] >= 30:
+            board_size = (4, 3)
+        else:
+            board_size = (3, 3)
+        
+        reels = spin_slot_machine(board_size)
         display_reels(reels)
 
         user_data['spin_count'] += 1
@@ -247,17 +256,18 @@ def play_slot_machine():
         else:
             print("아쉽게도, 다시 도전하세요.")
             user_data['balance'] -= total_bet
-        
+
         previous_level = user_data['level']
         user_data['level'] = calculate_level(user_data['total_spent'])
 
         if user_data['level'] > previous_level:
             print(f"레벨업! 새로운 레벨: {user_data['level']}")
-        
+
         print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
         print(f"총 사용 금액: ${user_data['total_spent']}, 현재 레벨: {user_data['level']}")
         print(f"현재 슬롯 배팅 금액: ${total_bet}")
         print(f"현재 잔액: ${user_data['balance']}")
+        
         play_again = input("그만 플레이 하겠습니까? (y/n): ")
         if play_again.lower() == 'y':
             break
