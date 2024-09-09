@@ -92,7 +92,6 @@ def display_reels(reels):
         print(" | ".join(row))
     print()
 
-
 def calculate_win(reels, selected_paylines, total_bet):
     # 슬롯 머신에서 당첨 배수를 계산하는 함수
     total_winnings = 0
@@ -237,11 +236,11 @@ def play_slot_machine():
         
         # Determine board size based on level
         if user_data['level'] >= 60:
-            board_size = (5, 3)
+            board_size = (3, 5)  # 3 rows, 5 columns
         elif user_data['level'] >= 30:
-            board_size = (4, 3)
+            board_size = (3, 4)  # 3 rows, 4 columns
         else:
-            board_size = (3, 3)
+            board_size = (3, 3)  # 3 rows, 3 columns
         
         reels = spin_slot_machine(board_size)
         display_reels(reels)
