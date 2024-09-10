@@ -27,6 +27,7 @@ paylines = {}
 # 레벨 정보를 저장할 딕셔너리 (free_charges 제거)
 levels = {}
 free_balances_per_level = {}
+max_auto_spin_per_level = {}
 
 def load_symbol_data(board_size):
     # CSV 파일에서 심볼 데이터를 불러오기
@@ -94,7 +95,7 @@ def load_paylines_data(board_size):
 
 def load_levels_data():
     # CSV 파일에서 레벨 데이터를 불러오기 (free_charges 제거)
-    global levels, free_balances_per_level
+    global levels, free_balances_per_level, max_auto_spin_per_level
     if os.path.exists(LEVELS_CSV):
         with open(LEVELS_CSV, mode='r') as file:
             reader = csv.DictReader(file)
@@ -102,15 +103,17 @@ def load_levels_data():
                 level = int(row['level'])
                 min_spent = int(row['min_spent'])
                 free_balance = int(row['free_balance'])
+                max_auto_spin = int(row['max_auto_spin'])
                 levels[level] = min_spent
                 free_balances_per_level[level] = free_balance
+                max_auto_spin_per_level[level] = max_auto_spin
     else:
         print(f"{LEVELS_CSV} 파일을 찾을 수 없습니다.")
         exit()
 
 def calculate_level(total_spent):
     # 총 사용 금액에 따른 레벨 계산
-    current_level = 0
+    current_level = 1
     for level, min_spent in sorted(levels.items(), key=lambda x: x[1]):
         if total_spent >= min_spent:
             current_level = level
@@ -128,8 +131,10 @@ def spin_slot_machine(board_size):
         reels.append(row)
     return reels
 
-def display_reels(reels):
+def display_reels(reels, spin_number=None):
     # 릴 결과를 출력
+    if spin_number is not None:
+        print(f"Spin #{spin_number}")
     for row in reels:
         print(" | ".join(row))
     print()
@@ -247,7 +252,7 @@ def get_user_data(user_id):
         users_data[user_id] = {
             "balance": 100,
             "total_spent": 0,
-            "level": 0,
+            "level": 1,
             "spin_count": 0,
             "free_charges": 3,  # 기본 무료 충전 횟수
             "ad_free_charges": 3,  # 기본 광고 충전 횟수
@@ -265,16 +270,7 @@ def play_slot_machine():
     
     load_user_data()
     
-    if user_id == "admin":
-        board_size = (3, 3)  # 기본 보드 크기
-        calculate_expected_value(board_size)
-        return
-
     user_data = get_user_data(user_id)
-
-    print(f"현재 잔액: ${user_data['balance']}")
-    print(f"현재 레벨: {user_data['level']}")
-    print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
 
     # Determine board size based on level
     if user_data['level'] >= 60:
@@ -286,6 +282,17 @@ def play_slot_machine():
     
     load_symbol_data(board_size)  # Load symbols for the current board size
     load_paylines_data(board_size)  # Load paylines for the current board size
+
+    if user_id == "admin":
+        calculate_expected_value(board_size)
+        return
+
+    print(f"현재 잔액: ${user_data['balance']}")
+    print(f"현재 레벨: {user_data['level']}")
+    print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
+
+    max_auto_spins = max_auto_spin_per_level[user_data['level']]
+    
     while True:
         try:
             num_paylines = int(input("몇 개의 페이라인에 베팅하시겠습니까? (1-5): "))
@@ -322,39 +329,42 @@ def play_slot_machine():
         
         input("Enter 키를 눌러 슬롯을 돌리세요...")
 
-        reels = spin_slot_machine(board_size)
-        display_reels(reels)
+        for spin_number in range(1, max_auto_spins + 1):
+            if user_data['balance'] < total_bet:
+                break
 
-        user_data['spin_count'] += 1
-        user_data['total_spent'] += total_bet
+            reels = spin_slot_machine(board_size)
+            display_reels(reels, spin_number)
 
-        winnings = calculate_win(reels, selected_paylines, total_bet, board_size)
-        if winnings > 0:
-            print(f"축하합니다! 보상: {winnings}")
-            user_data['balance'] += winnings
-        else:
-            print("아쉽게도, 다시 도전하세요.")
+            user_data['spin_count'] += 1
+            user_data['total_spent'] += total_bet
             user_data['balance'] -= total_bet
 
-        previous_level = user_data['level']
-        user_data['level'] = calculate_level(user_data['total_spent'])
-
-        if user_data['level'] > previous_level:
-            print(f"레벨업! 새로운 레벨: {user_data['level']}")
-            # Reload symbols and paylines if level changes
-            if user_data['level'] >= 60:
-                board_size = (3, 5)
-            elif user_data['level'] >= 30:
-                board_size = (3, 4)
+            winnings = calculate_win(reels, selected_paylines, total_bet, board_size)
+            if winnings > 0:
+                print(f"축하합니다! 보상: {winnings}")
+                user_data['balance'] += winnings
             else:
-                board_size = (3, 3)
-            load_symbol_data(board_size)
-            load_paylines_data(board_size)
+                print("아쉽게도, 다시 도전하세요.")
 
-        print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
-        print(f"총 사용 금액: ${user_data['total_spent']}, 현재 레벨: {user_data['level']}")
-        print(f"현재 슬롯 배팅 금액: ${total_bet}")
-        print(f"현재 잔액: ${user_data['balance']}")
+            previous_level = user_data['level']
+            user_data['level'] = calculate_level(user_data['total_spent'])
+
+            if user_data['level'] > previous_level:
+                print(f"레벨업! 새로운 레벨: {user_data['level']}")
+                # Reload symbols and paylines if level changes
+                if user_data['level'] >= 60:
+                    board_size = (3, 5)
+                elif user_data['level'] >= 30:
+                    board_size = (3, 4)
+                else:
+                    board_size = (3, 3)
+                load_symbol_data(board_size)
+                load_paylines_data(board_size)
+
+            print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
+            print(f"총 사용 금액: ${user_data['total_spent']}, 현재 레벨: {user_data['level']}")
+            print(f"현재 잔액: ${user_data['balance']}")
         
         play_again = input("그만 플레이 하겠습니까? (y/n): ")
         if play_again.lower() == 'y':
