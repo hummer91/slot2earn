@@ -139,7 +139,7 @@ def display_reels(reels, spin_number=None):
         print(" | ".join(row))
     print()
 
-def calculate_win(reels, selected_paylines, total_bet, board_size):
+def calculate_win(reels, selected_paylines, bet_size, board_size):
     # 슬롯 머신에서 당첨 배수를 계산하는 함수
     total_winnings = 0
     winning_lines = []
@@ -180,9 +180,9 @@ def calculate_win(reels, selected_paylines, total_bet, board_size):
     # 각 승리 라인에 대해 당첨 심볼의 배당률을 퍼센트로 계산
     for symbol, multiplier in winning_lines:
         if board_size == (3, 3):
-            total_winnings += (symbol_multipliers[symbol] / 100) * total_bet * multiplier
+            total_winnings += (symbol_multipliers[symbol] / 100) * bet_size * multiplier
         else:
-            total_winnings += (symbol_multipliers[symbol][multiplier] / 100) * total_bet
+            total_winnings += (symbol_multipliers[symbol][multiplier] / 100) * bet_size
     
     return total_winnings
 
@@ -210,7 +210,7 @@ def calculate_expected_value(board_size):
 
         expected_value += line_ev
 
-    print(f"슬롯 머신의 기대값: {expected_value:.4f}")
+    return expected_value
 
 def load_user_data():
     # CSV 파일에서 사용자 데이터를 불러오기
@@ -270,6 +270,14 @@ def play_slot_machine():
     
     load_user_data()
     
+    if user_id == "admin":
+        for board_size in [(3, 3), (3, 4), (3, 5)]:
+            load_symbol_data(board_size)
+            load_paylines_data(board_size)
+            ev = calculate_expected_value(board_size)
+            print(f"{board_size[0]}x{board_size[1]} 보드의 환수율: {ev:.4f}")
+        return
+
     user_data = get_user_data(user_id)
 
     # Determine board size based on level
@@ -282,10 +290,6 @@ def play_slot_machine():
     
     load_symbol_data(board_size)  # Load symbols for the current board size
     load_paylines_data(board_size)  # Load paylines for the current board size
-
-    if user_id == "admin":
-        calculate_expected_value(board_size)
-        return
 
     print(f"현재 잔액: ${user_data['balance']}")
     print(f"현재 레벨: {user_data['level']}")
@@ -304,8 +308,8 @@ def play_slot_machine():
             print("유효한 숫자를 입력하세요.")
     
     selected_paylines = list(range(1, num_paylines + 1))
-    base_bet = 10
-    total_bet = base_bet * num_paylines
+    bet_size = 10
+    total_bet = bet_size * num_paylines
 
     print(f"총 베팅 금액은 ${total_bet}입니다.")
     
@@ -340,7 +344,7 @@ def play_slot_machine():
             user_data['total_spent'] += total_bet
             user_data['balance'] -= total_bet
 
-            winnings = calculate_win(reels, selected_paylines, total_bet, board_size)
+            winnings = calculate_win(reels, selected_paylines, bet_size, board_size)
             if winnings > 0:
                 print(f"축하합니다! 보상: {winnings}")
                 user_data['balance'] += winnings
