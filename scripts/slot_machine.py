@@ -103,12 +103,12 @@ def load_levels_data():
             reader = csv.DictReader(file)
             for row in reader:
                 level = int(row['level'])
-                min_spent = int(row['min_spent'])
+                xp_needed = int(row['xp_needed'])
                 daily_free_points = int(row['daily_free_points'])
                 max_auto_spin = int(row['max_auto_spin'])
                 max_paylines = int(row['max_paylines'])
                 bonus = int(row['level_up_bonus'])  # 레벨업 보너스 추가
-                levels[level] = min_spent
+                levels[level] = xp_needed
                 free_points_per_level[level] = daily_free_points
                 max_auto_spin_per_level[level] = max_auto_spin
                 max_paylines_per_level[level] = max_paylines
@@ -120,8 +120,8 @@ def load_levels_data():
 def calculate_level(total_spent):
     # 총 사용 금액에 따른 레벨 계산
     current_level = 1
-    for level, min_spent in sorted(levels.items(), key=lambda x: x[1]):
-        if total_spent >= min_spent:
+    for level, xp_needed in sorted(levels.items(), key=lambda x: x[1]):
+        if total_spent >= xp_needed:
             current_level = level
         else:
             break
@@ -232,6 +232,7 @@ def load_user_data():
                 free_charges = int(row['free_charges'])
                 ad_free_charges = int(row['ad_free_charges'])
                 last_played_day = int(row['last_played_day'])
+                xp = int(row.get('xp', 0))  # Add xp field
                 users_data[user_id] = {
                     "points": points,
                     "total_spent": total_spent,
@@ -239,7 +240,8 @@ def load_user_data():
                     "spin_count": 0,
                     "free_charges": free_charges,
                     "ad_free_charges": ad_free_charges,
-                    "last_played_day": last_played_day
+                    "last_played_day": last_played_day,
+                    "xp": xp  # Initialize xp
                 }
     else:
         print(f"{USER_CSV} 파일을 찾을 수 없습니다.")
@@ -249,9 +251,9 @@ def save_user_data():
     # 사용자 데이터를 CSV 파일에 저장하기
     with open(USER_CSV, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['user_id', 'points', 'total_spent', 'level', 'free_charges', 'ad_free_charges', 'last_played_day'])  # 헤더 추가
+        writer.writerow(['user_id', 'points', 'total_spent', 'level', 'free_charges', 'ad_free_charges', 'last_played_day', 'xp'])  # Add xp to header
         for user_id, data in users_data.items():
-            writer.writerow([user_id, data['points'], data['total_spent'], data['level'], data['free_charges'], data['ad_free_charges'], data['last_played_day']])
+            writer.writerow([user_id, data['points'], data['total_spent'], data['level'], data['free_charges'], data['ad_free_charges'], data['last_played_day'], data['xp']])
 
 def get_user_data(user_id):
     # 사용자의 ID로 데이터를 가져오거나, 새로 생성
@@ -263,7 +265,8 @@ def get_user_data(user_id):
             "spin_count": 0,
             "free_charges": 3,  # 기본 무료 충전 횟수
             "ad_free_charges": 3,  # 기본 광고 충전 횟수
-            "last_played_day": 0  # 0일로 초기화
+            "last_played_day": 0,  # 0일로 초기화
+            "xp": 0
         }
     return users_data[user_id]
 
@@ -297,8 +300,9 @@ def play_slot_machine():
     
     load_symbol_data(board_size)  # Load symbols for the current board size
     load_paylines_data(board_size)  # Load paylines for the current board size
-
-    print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} ")
+    print(f"{user_data}")
+    xp_needed = levels[user_data['level']+1]
+    print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
     print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
 
     max_auto_spins = max_auto_spin_per_level[user_data['level']]
@@ -340,6 +344,7 @@ def play_slot_machine():
             user_data['spin_count'] += 1
             user_data['total_spent'] += total_bet
             user_data['points'] -= total_bet
+            user_data['xp'] += total_bet  # Add xp based on total_bet
 
             winnings = calculate_win(reels, selected_paylines, bet_size, board_size)
             if winnings > 0:
@@ -349,13 +354,15 @@ def play_slot_machine():
                 print("아쉽게도, 다시 도전하세요.")
 
             previous_level = user_data['level']
-            user_data['level'] = calculate_level(user_data['total_spent'])
+            user_data['level'] = calculate_level(user_data['xp'])
 
             if user_data['level'] > previous_level:
                 print(f"레벨업! 새로운 레벨: {user_data['level']}")
                 # 레벨업 보너스 추가
                 user_data['points'] += level_up_bonus[user_data['level']]
                 print(f"레벨업 보너스 추가! 현재 포인트: ${user_data['points']}")
+                # Adjust xp for the new level
+                user_data['xp'] -= levels[user_data['level']]
                 # Reload symbols and paylines if level changes
                 if user_data['level'] >= 60:
                     board_size = (3, 5)
@@ -368,9 +375,9 @@ def play_slot_machine():
 
             print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
             print(f"총 사용 금액: ${user_data['total_spent']}")
-            print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} ")
+            print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
         
-        play_again = input("그만 플레이 하겠습니까? (y/n): ")
+        play_again = input("그만 플레이 하겠습니까? (y): ")
         if play_again.lower() == 'y':
             break
         print(f"======================================================================")
