@@ -305,7 +305,7 @@ def play_slot_machine():
     bet_size = 10
     total_bet = bet_size * max_paylines
 
-    print(f"총 베팅 금액은 ${total_bet}입니다.")
+    print(f"총 베팅 금액은 ${bet_size}X${max_paylines} = ${total_bet}입니다.")
     
     while user_data['balance'] >= total_bet or user_data['free_charges'] > 0 or user_data['ad_free_charges'] > 0:
         if user_data['balance'] < total_bet:
