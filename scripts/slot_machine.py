@@ -96,8 +96,9 @@ def load_paylines_data(board_size):
 
 def load_levels_data():
     # CSV 파일에서 레벨 데이터를 불러오기 (free_charges 제거)
-    global levels, free_points_per_level, max_auto_spin_per_level, max_paylines_per_level, level_up_bonus
+    global levels, free_points_per_level, max_auto_spin_per_level, max_paylines_per_level, level_up_bonus, bet_amount_per_level
     level_up_bonus = {}  # 레벨업 보너스를 저장할 딕셔너리
+    bet_amount_per_level = {}  # 레벨별 베팅 금액을 저장할 딕셔너리
     if os.path.exists(LEVELS_CSV):
         with open(LEVELS_CSV, mode='r') as file:
             reader = csv.DictReader(file)
@@ -108,20 +109,22 @@ def load_levels_data():
                 max_auto_spin = int(row['max_auto_spin'])
                 max_paylines = int(row['max_paylines'])
                 bonus = int(row['level_up_bonus'])  # 레벨업 보너스 추가
+                bet_amount = int(row['bet_amount'])  # 레벨별 베팅 금액 추가
                 levels[level] = xp_needed
                 free_points_per_level[level] = daily_free_points
                 max_auto_spin_per_level[level] = max_auto_spin
                 max_paylines_per_level[level] = max_paylines
                 level_up_bonus[level] = bonus  # 보너스 저장
+                bet_amount_per_level[level] = bet_amount  # 베팅 금액 저장
     else:
         print(f"{LEVELS_CSV} 파일을 찾을 수 없습니다.")
         exit()
 
-def calculate_level(total_spent):
+def calculate_level(xp):
     # 총 사용 금액에 따른 레벨 계산
     current_level = 1
     for level, xp_needed in sorted(levels.items(), key=lambda x: x[1]):
-        if total_spent >= xp_needed:
+        if xp >= xp_needed:
             current_level = level
         else:
             break
@@ -300,16 +303,15 @@ def play_slot_machine():
     
     load_symbol_data(board_size)  # Load symbols for the current board size
     load_paylines_data(board_size)  # Load paylines for the current board size
-    print(f"{user_data}")
     xp_needed = levels[user_data['level']+1]
     print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
     print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
 
     max_auto_spins = max_auto_spin_per_level[user_data['level']]
     max_paylines = max_paylines_per_level[user_data['level']]
+    bet_size = bet_amount_per_level[user_data['level']]  # 레벨별 베팅 금액 사용
     
     selected_paylines = list(range(1, max_paylines + 1))
-    bet_size = 10
     total_bet = bet_size * max_paylines
 
     print(f"총 베팅 금액은 ${bet_size}X${max_paylines} = ${total_bet}입니다.")
