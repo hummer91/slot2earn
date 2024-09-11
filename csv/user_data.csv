@@ -1,4 +1,7 @@
-user_id,balance,total_spent,level,free_charges,ad_free_charges,last_played_day
+user_id,points,total_spent,level,free_charges,ad_free_charges,last_played_day
 01,124280.0,22400,60,3,3,0
 02,15420.0,10250,30,0,0,0
-03,65120.0,5020,4,0,0,0
+03,114760.0,5380,5,0,0,0
+04,195.0,130,1,2,3,0
+05,190.0,110,1,2,3,0
+06,90,10,1,3,3,0

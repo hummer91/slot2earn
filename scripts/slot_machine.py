@@ -26,7 +26,7 @@ paylines = {}
 
 # 레벨 정보를 저장할 딕셔너리 (free_charges 제거)
 levels = {}
-free_balances_per_level = {}
+free_points_per_level = {}
 max_auto_spin_per_level = {}
 max_paylines_per_level = {}
 
@@ -96,7 +96,7 @@ def load_paylines_data(board_size):
 
 def load_levels_data():
     # CSV 파일에서 레벨 데이터를 불러오기 (free_charges 제거)
-    global levels, free_balances_per_level, max_auto_spin_per_level, max_paylines_per_level, level_up_bonus
+    global levels, free_points_per_level, max_auto_spin_per_level, max_paylines_per_level, level_up_bonus
     level_up_bonus = {}  # 레벨업 보너스를 저장할 딕셔너리
     if os.path.exists(LEVELS_CSV):
         with open(LEVELS_CSV, mode='r') as file:
@@ -104,12 +104,12 @@ def load_levels_data():
             for row in reader:
                 level = int(row['level'])
                 min_spent = int(row['min_spent'])
-                free_balance = int(row['free_balance'])
+                daily_free_points = int(row['daily_free_points'])
                 max_auto_spin = int(row['max_auto_spin'])
                 max_paylines = int(row['max_paylines'])
                 bonus = int(row['level_up_bonus'])  # 레벨업 보너스 추가
                 levels[level] = min_spent
-                free_balances_per_level[level] = free_balance
+                free_points_per_level[level] = daily_free_points
                 max_auto_spin_per_level[level] = max_auto_spin
                 max_paylines_per_level[level] = max_paylines
                 level_up_bonus[level] = bonus  # 보너스 저장
@@ -226,14 +226,14 @@ def load_user_data():
             reader = csv.DictReader(file)
             for row in reader:
                 user_id = row['user_id']
-                balance = float(row['balance'])
+                points = float(row['points'])
                 total_spent = int(row['total_spent'])
                 level = int(row['level'])
                 free_charges = int(row['free_charges'])
                 ad_free_charges = int(row['ad_free_charges'])
                 last_played_day = int(row['last_played_day'])
                 users_data[user_id] = {
-                    "balance": balance,
+                    "points": points,
                     "total_spent": total_spent,
                     "level": level,
                     "spin_count": 0,
@@ -249,15 +249,15 @@ def save_user_data():
     # 사용자 데이터를 CSV 파일에 저장하기
     with open(USER_CSV, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['user_id', 'balance', 'total_spent', 'level', 'free_charges', 'ad_free_charges', 'last_played_day'])  # 헤더 추가
+        writer.writerow(['user_id', 'points', 'total_spent', 'level', 'free_charges', 'ad_free_charges', 'last_played_day'])  # 헤더 추가
         for user_id, data in users_data.items():
-            writer.writerow([user_id, data['balance'], data['total_spent'], data['level'], data['free_charges'], data['ad_free_charges'], data['last_played_day']])
+            writer.writerow([user_id, data['points'], data['total_spent'], data['level'], data['free_charges'], data['ad_free_charges'], data['last_played_day']])
 
 def get_user_data(user_id):
     # 사용자의 ID로 데이터를 가져오거나, 새로 생성
     if user_id not in users_data:
         users_data[user_id] = {
-            "balance": 100,
+            "points": free_points_per_level[1],
             "total_spent": 0,
             "level": 1,
             "spin_count": 0,
@@ -298,8 +298,7 @@ def play_slot_machine():
     load_symbol_data(board_size)  # Load symbols for the current board size
     load_paylines_data(board_size)  # Load paylines for the current board size
 
-    print(f"현재 잔액: ${user_data['balance']}")
-    print(f"현재 레벨: {user_data['level']}")
+    print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} ")
     print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
 
     max_auto_spins = max_auto_spin_per_level[user_data['level']]
@@ -311,18 +310,18 @@ def play_slot_machine():
 
     print(f"총 베팅 금액은 ${bet_size}X${max_paylines} = ${total_bet}입니다.")
     
-    while user_data['balance'] >= total_bet or user_data['free_charges'] > 0 or user_data['ad_free_charges'] > 0:
-        if user_data['balance'] < total_bet:
+    while user_data['points'] >= total_bet or user_data['free_charges'] > 0 or user_data['ad_free_charges'] > 0:
+        if user_data['points'] < total_bet:
             if user_data['free_charges'] > 0:
                 print("무료 충전 중...")
                 user_data['free_charges'] -= 1
-                user_data['balance'] += free_balances_per_level[user_data['level']]
-                print(f"무료 충전 완료! 현재 잔액: ${user_data['balance']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
+                user_data['points'] += free_points_per_level[user_data['level']]
+                print(f"무료 충전 완료! 현재 포인트: ${user_data['points']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
             elif user_data['ad_free_charges'] > 0:
                 print("광고 충전 중...")
                 user_data['ad_free_charges'] -= 1
-                user_data['balance'] += free_balances_per_level[user_data['level']]
-                print(f"광고 충전 완료! 현재 잔액: ${user_data['balance']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}")
+                user_data['points'] += free_points_per_level[user_data['level']]
+                print(f"광고 충전 완료! 현재 포인트: ${user_data['points']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}")
             else:
                 user_data['last_played_day'] += 1
                 update_user_charges(user_data)
@@ -332,7 +331,7 @@ def play_slot_machine():
         input("Enter 키를 눌러 슬롯을 돌리세요...")
 
         for spin_number in range(1, max_auto_spins + 1):
-            if user_data['balance'] < total_bet:
+            if user_data['points'] < total_bet:
                 break
 
             reels = spin_slot_machine(board_size)
@@ -340,12 +339,12 @@ def play_slot_machine():
 
             user_data['spin_count'] += 1
             user_data['total_spent'] += total_bet
-            user_data['balance'] -= total_bet
+            user_data['points'] -= total_bet
 
             winnings = calculate_win(reels, selected_paylines, bet_size, board_size)
             if winnings > 0:
                 print(f"축하합니다! 보상: {winnings}")
-                user_data['balance'] += winnings
+                user_data['points'] += winnings
             else:
                 print("아쉽게도, 다시 도전하세요.")
 
@@ -355,8 +354,8 @@ def play_slot_machine():
             if user_data['level'] > previous_level:
                 print(f"레벨업! 새로운 레벨: {user_data['level']}")
                 # 레벨업 보너스 추가
-                user_data['balance'] += level_up_bonus[user_data['level']]
-                print(f"레벨업 보너스 추가! 현재 잔액: ${user_data['balance']}")
+                user_data['points'] += level_up_bonus[user_data['level']]
+                print(f"레벨업 보너스 추가! 현재 포인트: ${user_data['points']}")
                 # Reload symbols and paylines if level changes
                 if user_data['level'] >= 60:
                     board_size = (3, 5)
@@ -368,15 +367,15 @@ def play_slot_machine():
                 load_paylines_data(board_size)
 
             print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
-            print(f"총 사용 금액: ${user_data['total_spent']}, 현재 레벨: {user_data['level']}")
-            print(f"현재 잔액: ${user_data['balance']}")
+            print(f"총 사용 금액: ${user_data['total_spent']}")
+            print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} ")
         
         play_again = input("그만 플레이 하겠습니까? (y/n): ")
         if play_again.lower() == 'y':
             break
         print(f"======================================================================")
 
-    print(f"게임 종료. 잔액: ${user_data['balance']}, 레벨: {user_data['level']}, 남은 무료 충전 횟수: {user_data['free_charges']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
+    print(f"게임 종료. 포인트: ${user_data['points']}, 레벨: {user_data['level']}, 남은 무료 충전 횟수: {user_data['free_charges']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
     
     save_user_data()
 
