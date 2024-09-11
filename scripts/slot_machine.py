@@ -28,6 +28,7 @@ paylines = {}
 levels = {}
 free_balances_per_level = {}
 max_auto_spin_per_level = {}
+max_paylines_per_level = {}
 
 def load_symbol_data(board_size):
     # CSV 파일에서 심볼 데이터를 불러오기
@@ -95,7 +96,7 @@ def load_paylines_data(board_size):
 
 def load_levels_data():
     # CSV 파일에서 레벨 데이터를 불러오기 (free_charges 제거)
-    global levels, free_balances_per_level, max_auto_spin_per_level
+    global levels, free_balances_per_level, max_auto_spin_per_level, max_paylines_per_level
     if os.path.exists(LEVELS_CSV):
         with open(LEVELS_CSV, mode='r') as file:
             reader = csv.DictReader(file)
@@ -104,9 +105,11 @@ def load_levels_data():
                 min_spent = int(row['min_spent'])
                 free_balance = int(row['free_balance'])
                 max_auto_spin = int(row['max_auto_spin'])
+                max_paylines = int(row['max_paylines'])
                 levels[level] = min_spent
                 free_balances_per_level[level] = free_balance
                 max_auto_spin_per_level[level] = max_auto_spin
+                max_paylines_per_level[level] = max_paylines
     else:
         print(f"{LEVELS_CSV} 파일을 찾을 수 없습니다.")
         exit()
@@ -296,20 +299,11 @@ def play_slot_machine():
     print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
 
     max_auto_spins = max_auto_spin_per_level[user_data['level']]
+    max_paylines = max_paylines_per_level[user_data['level']]
     
-    while True:
-        try:
-            num_paylines = int(input("몇 개의 페이라인에 베팅하시겠습니까? (1-5): "))
-            if 1 <= num_paylines <= len(paylines):
-                break
-            else:
-                print(f"1에서 {len(paylines)} 사이의 숫자를 입력하세요.")
-        except ValueError:
-            print("유효한 숫자를 입력하세요.")
-    
-    selected_paylines = list(range(1, num_paylines + 1))
+    selected_paylines = list(range(1, max_paylines + 1))
     bet_size = 10
-    total_bet = bet_size * num_paylines
+    total_bet = bet_size * max_paylines
 
     print(f"총 베팅 금액은 ${total_bet}입니다.")
     
