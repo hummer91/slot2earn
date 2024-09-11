@@ -372,7 +372,8 @@ def play_slot_machine():
                     board_size = (3, 3)
                 load_symbol_data(board_size)
                 load_paylines_data(board_size)
-
+                
+            xp_needed = levels[user_data['level']+1]
             print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
             print(f"총 사용 금액: ${user_data['total_spent']}")
             print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
