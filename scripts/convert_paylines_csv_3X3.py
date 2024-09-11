@@ -33,8 +33,8 @@ def convert_paylines(input_file, output_file):
             writer.writerow([payline_id, ';'.join(positions)])
 
 # 파일 경로 설정
-input_file = 'csv/payline_original_3X3.csv'
-output_file = 'csv/paylines_3x3_1.csv'
+input_file = 'csv/paylines/payline_original_3X3.csv'
+output_file = 'csv/paylines/paylines_3x3.csv'
 
 # 변환 함수 호출
 convert_paylines(input_file, output_file)

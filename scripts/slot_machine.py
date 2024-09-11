@@ -4,15 +4,15 @@ import os
 
 # 파일 경로 설정
 USER_CSV = "csv/user_data.csv"
-SYMBOLS_CSV_3x3 = "csv/symbols_3x3.csv"
-SYMBOLS_CSV_3x4 = "csv/symbols_3x4.csv"
-SYMBOLS_CSV_3x5 = "csv/symbols_3x5.csv"
+SYMBOLS_CSV_3x3 = "csv/symbols/symbols_3x3.csv"
+SYMBOLS_CSV_3x4 = "csv/symbols/symbols_3x4.csv"
+SYMBOLS_CSV_3x5 = "csv/symbols/symbols_3x5.csv"
 LEVELS_CSV = "csv/levels_data.csv"
 
 # 페이라인 CSV 파일 경로 설정
-PAYLINES_CSV_3x3 = "csv/paylines_3x3.csv"
-PAYLINES_CSV_3x4 = "csv/paylines_3x4.csv"
-PAYLINES_CSV_3x5 = "csv/paylines_3x5.csv"
+PAYLINES_CSV_3x3 = "csv/paylines/paylines_3x3.csv"
+PAYLINES_CSV_3x4 = "csv/paylines/paylines_3x4.csv"
+PAYLINES_CSV_3x5 = "csv/paylines/paylines_3x5.csv"
 
 # 사용자 데이터 저장을 위한 딕셔너리
 users_data = {}
@@ -96,7 +96,8 @@ def load_paylines_data(board_size):
 
 def load_levels_data():
     # CSV 파일에서 레벨 데이터를 불러오기 (free_charges 제거)
-    global levels, free_balances_per_level, max_auto_spin_per_level, max_paylines_per_level
+    global levels, free_balances_per_level, max_auto_spin_per_level, max_paylines_per_level, level_up_bonus
+    level_up_bonus = {}  # 레벨업 보너스를 저장할 딕셔너리
     if os.path.exists(LEVELS_CSV):
         with open(LEVELS_CSV, mode='r') as file:
             reader = csv.DictReader(file)
@@ -106,10 +107,12 @@ def load_levels_data():
                 free_balance = int(row['free_balance'])
                 max_auto_spin = int(row['max_auto_spin'])
                 max_paylines = int(row['max_paylines'])
+                bonus = int(row['level_up_bonus'])  # 레벨업 보너스 추가
                 levels[level] = min_spent
                 free_balances_per_level[level] = free_balance
                 max_auto_spin_per_level[level] = max_auto_spin
                 max_paylines_per_level[level] = max_paylines
+                level_up_bonus[level] = bonus  # 보너스 저장
     else:
         print(f"{LEVELS_CSV} 파일을 찾을 수 없습니다.")
         exit()
@@ -138,6 +141,7 @@ def display_reels(reels, spin_number=None):
     # 릴 결과를 출력
     if spin_number is not None:
         print(f"Spin #{spin_number}")
+        print("======================================================================")
     for row in reels:
         print(" | ".join(row))
     print()
@@ -305,7 +309,7 @@ def play_slot_machine():
     bet_size = 10
     total_bet = bet_size * max_paylines
 
-    print(f"총 베팅 금액은 ${total_bet}입니다.")
+    print(f"총 베팅 금액은 ${bet_size}X${max_paylines} = ${total_bet}입니다.")
     
     while user_data['balance'] >= total_bet or user_data['free_charges'] > 0 or user_data['ad_free_charges'] > 0:
         if user_data['balance'] < total_bet:
@@ -350,6 +354,9 @@ def play_slot_machine():
 
             if user_data['level'] > previous_level:
                 print(f"레벨업! 새로운 레벨: {user_data['level']}")
+                # 레벨업 보너스 추가
+                user_data['balance'] += level_up_bonus[user_data['level']]
+                print(f"레벨업 보너스 추가! 현재 잔액: ${user_data['balance']}")
                 # Reload symbols and paylines if level changes
                 if user_data['level'] >= 60:
                     board_size = (3, 5)
