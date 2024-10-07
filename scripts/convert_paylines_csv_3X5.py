@@ -9,17 +9,30 @@ def convert_paylines(input_file, output_file):
         
         payline_id = 1
         board = []
+        all_paylines = []
+        
         for row in reader:
             if not any(row):  # Check for empty row indicating a new board
-                # print(row)
                 if board:
                     positions = []
                     for i in range(3):
                         for j in range(5):
                             if board[i][j] == '1':
                                 positions.append(f"{i}-{j}")
-                    writer.writerow([payline_id, ';'.join(positions)])
-                    payline_id += 1
+                    
+                    # Check for duplicate paylines
+                    is_duplicate = False
+                    for idx, existing_payline in enumerate(all_paylines):
+                        if positions == existing_payline:
+                            print(f"경고: 페이라인 {payline_id}가 페이라인 {idx + 1}과 동일합니다. 이 페이라인은 변환되지 않습니다.")
+                            is_duplicate = True
+                            break
+                    
+                    if not is_duplicate:
+                        writer.writerow([payline_id, ';'.join(positions)])
+                        all_paylines.append(positions)
+                        payline_id += 1
+                    
                     board = []
             else:
                 board.append(row)
@@ -31,7 +44,17 @@ def convert_paylines(input_file, output_file):
                 for j in range(5):
                     if board[i][j] == '1':
                         positions.append(f"{i}-{j}")
-            writer.writerow([payline_id, ';'.join(positions)])
+            
+            # Check for duplicate paylines
+            is_duplicate = False
+            for idx, existing_payline in enumerate(all_paylines):
+                if positions == existing_payline:
+                    print(f"경고: 페이라인 {payline_id}가 페이라인 {idx + 1}과 동일합니다. 이 페이라인은 변환되지 않습니다.")
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
+                writer.writerow([payline_id, ';'.join(positions)])
 
 # 파일 경로 설정
 input_file = 'csv/paylines/payline_original_3X5.csv'

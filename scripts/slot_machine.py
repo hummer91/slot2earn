@@ -95,10 +95,10 @@ def load_paylines_data(board_size):
         exit()
 
 def load_levels_data():
-    # CSV 파일에서 레벨 데이터를 불러오기 (free_charges 제거)
-    global levels, free_points_per_level, max_auto_spin_per_level, max_paylines_per_level, level_up_bonus, bet_amount_per_level
-    level_up_bonus = {}  # 레벨업 보너스를 저장할 딕셔너리
-    bet_amount_per_level = {}  # 레벨별 베팅 금액을 저장할 딕셔너리
+    global levels, free_points_per_level, max_auto_spin_per_level, max_paylines_per_level, level_up_bonus, min_bet_per_level, bet_set_per_level
+    level_up_bonus = {}
+    min_bet_per_level = {}
+    bet_set_per_level = {}
     if os.path.exists(LEVELS_CSV):
         with open(LEVELS_CSV, mode='r') as file:
             reader = csv.DictReader(file)
@@ -108,14 +108,16 @@ def load_levels_data():
                 daily_free_points = int(row['daily_free_points'])
                 max_auto_spin = int(row['max_auto_spin'])
                 max_paylines = int(row['max_paylines'])
-                bonus = int(row['level_up_bonus'])  # 레벨업 보너스 추가
-                bet_amount = int(row['bet_amount'])  # 레벨별 베팅 금액 추가
+                bonus = int(row['level_up_bonus'])
+                min_bet = int(row['min_bet'])
+                bet_set = [int(bet) for bet in row['bet_set'].split(',')]
                 levels[level] = xp_needed
                 free_points_per_level[level] = daily_free_points
                 max_auto_spin_per_level[level] = max_auto_spin
                 max_paylines_per_level[level] = max_paylines
-                level_up_bonus[level] = bonus  # 보너스 저장
-                bet_amount_per_level[level] = bet_amount  # 베팅 금액 저장
+                level_up_bonus[level] = bonus
+                min_bet_per_level[level] = min_bet
+                bet_set_per_level[level] = bet_set
     else:
         print(f"{LEVELS_CSV} 파일을 찾을 수 없습니다.")
         exit()
@@ -214,7 +216,7 @@ def calculate_expected_value(board_size):
                 win_probability = probability ** 4  # 당첨 확률은 각 심볼이 네 번 연속 등장할 확률
                 win_multiplier = symbol_multipliers[symbol][4] / 100  # 배당률을 퍼센트로 해석
             elif board_size == (3, 5):
-                win_probability = probability ** 5  # 당첨 확률은 각 심볼이 다섯 번 연속 등장할 확률
+                win_probability = probability ** 5  # 당첨 확률은 각 심��이 다섯 번 연속 등장할 확률
                 win_multiplier = symbol_multipliers[symbol][5] / 100  # 배당률을 퍼센트로 해석
             line_ev += win_probability * win_multiplier
 
@@ -295,21 +297,34 @@ def play_slot_machine():
 
     # Determine board size based on level
     if user_data['level'] >= 60:
-        board_size = (3, 5)  # 3 rows, 5 columns
+        board_size = (3, 5)
     elif user_data['level'] >= 30:
-        board_size = (3, 4)  # 3 rows, 4 columns
+        board_size = (3, 4)
     else:
-        board_size = (3, 3)  # 3 rows, 3 columns
+        board_size = (3, 3)
     
-    load_symbol_data(board_size)  # Load symbols for the current board size
-    load_paylines_data(board_size)  # Load paylines for the current board size
+    load_symbol_data(board_size)
+    load_paylines_data(board_size)
     xp_needed = levels[user_data['level']+1]
     print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
     print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
 
     max_auto_spins = max_auto_spin_per_level[user_data['level']]
     max_paylines = max_paylines_per_level[user_data['level']]
-    bet_size = bet_amount_per_level[user_data['level']]  # 레벨별 베팅 금액 사용
+    min_bet = min_bet_per_level[user_data['level']]
+    bet_set = bet_set_per_level[user_data['level']]
+    
+    # 배팅 금액 선택 로직
+    print("배팅 금액을 선택하세요:")
+    for i, bet in enumerate(bet_set, 1):
+        print(f"{i}. {bet}")
+    while True:
+        choice = input("선택: ")
+        if choice.isdigit() and 1 <= int(choice) <= len(bet_set):
+            bet_size = bet_set[int(choice) - 1]
+            break
+        else:
+            print("올바른 선택지를 입력해주세요.")
     
     selected_paylines = list(range(1, max_paylines + 1))
     total_bet = bet_size * max_paylines
@@ -392,3 +407,12 @@ def play_slot_machine():
 if __name__ == "__main__":
     load_levels_data()
     play_slot_machine()
+
+
+# 일일 보상 시스템: 매일 로그인 시 보상을 제공하는 기능이 구현되지 않았습니다.
+# 광고 시청 후 포인트 지급: 광고 시청에 대한 보상 시스템이 구현되지 않았습니다. 현재는 단순히 광고 충전 횟수만 감소시키고 있습니다.
+# 특별 이벤트 또는 보너스 게임: 특별한 이벤트나 보너스 게임 기능이 구현되지 않았습니다.
+# 소셜 기능: 친구 초대, 선물 주고받기 등의 소셜 기능이 구현되지 않았습니다.
+# 상점 시스템: 아이템 구매나 포인트 구매 등을 할 수 있는 상점 시스템이 구현되지 않았습니다.
+# 업적 시스템: 특정 조건을 달성했을 때 보상을 주는 업적 시스템이 구현되지 않았습니다.
+# 통계 및 분석 기능: 플레이어의 게임 플레이 데이터를 분석하고 표시하는 기능이 구현되지 않았습니다.
