@@ -216,7 +216,7 @@ def calculate_expected_value(board_size):
                 win_probability = probability ** 4  # 당첨 확률은 각 심볼이 네 번 연속 등장할 확률
                 win_multiplier = symbol_multipliers[symbol][4] / 100  # 배당률을 퍼센트로 해석
             elif board_size == (3, 5):
-                win_probability = probability ** 5  # 당첨 확률은 각 심��이 다섯 번 연속 등장할 확률
+                win_probability = probability ** 5  # 당첨 확률은 각 심이 다섯 번 연속 등장할 확률
                 win_multiplier = symbol_multipliers[symbol][5] / 100  # 배당률을 퍼센트로 해석
             line_ev += win_probability * win_multiplier
 
@@ -306,7 +306,7 @@ def play_slot_machine():
     load_symbol_data(board_size)
     load_paylines_data(board_size)
     xp_needed = levels[user_data['level']+1]
-    print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
+    print(f"현재 포인트: {user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
     print(f"무료 충전 횟수: {user_data['free_charges']}, 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
 
     max_auto_spins = max_auto_spin_per_level[user_data['level']]
@@ -317,7 +317,7 @@ def play_slot_machine():
     # 배팅 금액 선택 로직
     print("배팅 금액을 선택하세요:")
     for i, bet in enumerate(bet_set, 1):
-        print(f"{i}. {bet}")
+        print(f"{i}. {bet} 포인트")
     while True:
         choice = input("선택: ")
         if choice.isdigit() and 1 <= int(choice) <= len(bet_set):
@@ -329,7 +329,7 @@ def play_slot_machine():
     selected_paylines = list(range(1, max_paylines + 1))
     total_bet = bet_size * max_paylines
 
-    print(f"총 베팅 금액은 ${bet_size}X${max_paylines} = ${total_bet}입니다.")
+    print(f"총 베팅 금액은 {bet_size}X{max_paylines} = {total_bet} 포인트입니다.")
     
     while user_data['points'] >= total_bet or user_data['free_charges'] > 0 or user_data['ad_free_charges'] > 0:
         if user_data['points'] < total_bet:
@@ -337,12 +337,12 @@ def play_slot_machine():
                 print("무료 충전 중...")
                 user_data['free_charges'] -= 1
                 user_data['points'] += free_points_per_level[user_data['level']]
-                print(f"무료 충전 완료! 현재 포인트: ${user_data['points']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
+                print(f"무료 충전 완료! 현재 포인트: {user_data['points']}, 남은 무료 충전 횟수: {user_data['free_charges']}")
             elif user_data['ad_free_charges'] > 0:
                 print("광고 충전 중...")
                 user_data['ad_free_charges'] -= 1
                 user_data['points'] += free_points_per_level[user_data['level']]
-                print(f"광고 충전 완료! 현재 포인트: ${user_data['points']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}")
+                print(f"광고 충전 완료! 현재 포인트: {user_data['points']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}")
             else:
                 user_data['last_played_day'] += 1
                 update_user_charges(user_data)
@@ -365,7 +365,7 @@ def play_slot_machine():
 
             winnings = calculate_win(reels, selected_paylines, bet_size, board_size)
             if winnings > 0:
-                print(f"축하합니다! 보상: {winnings}")
+                print(f"축하합니다! 보상: {winnings} 포인트")
                 user_data['points'] += winnings
             else:
                 print("아쉽게도, 다시 도전하세요.")
@@ -377,7 +377,7 @@ def play_slot_machine():
                 print(f"레벨업! 새로운 레벨: {user_data['level']}")
                 # 레벨업 보너스 추가
                 user_data['points'] += level_up_bonus[user_data['level']]
-                print(f"레벨업 보너스 추가! 현재 포인트: ${user_data['points']}")
+                print(f"레벨업 보너스 추가! 현재 포인트: {user_data['points']}")
                 # Adjust xp for the new level
                 user_data['xp'] -= levels[user_data['level']]
                 # Reload symbols and paylines if level changes
@@ -392,15 +392,15 @@ def play_slot_machine():
                 
             xp_needed = levels[user_data['level']+1]
             print(f"총 릴 돌린 횟수: {user_data['spin_count']}")
-            print(f"총 사용 금액: ${user_data['total_spent']}")
-            print(f"현재 포인트: ${user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
+            print(f"총 사용 금액: {user_data['total_spent']} 포인트")
+            print(f"현재 포인트: {user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
         
         play_again = input("그만 플레이 하겠습니까? (y): ")
         if play_again.lower() == 'y':
             break
         print(f"======================================================================")
 
-    print(f"게임 종료. 포인트: ${user_data['points']}, 레벨: {user_data['level']}, 남은 무료 충전 횟수: {user_data['free_charges']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
+    print(f"게임 종료. 포인트: {user_data['points']}, 레벨: {user_data['level']}, 남은 무료 충전 횟수: {user_data['free_charges']}, 남은 광고 충전 횟수: {user_data['ad_free_charges']}, 플레이한 날: {user_data['last_played_day']}")
     
     save_user_data()
 
