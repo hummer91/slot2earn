@@ -14,6 +14,9 @@ PAYLINES_CSV_3x3 = "csv/paylines/paylines_3x3.csv"
 PAYLINES_CSV_3x4 = "csv/paylines/paylines_3x4.csv"
 PAYLINES_CSV_3x5 = "csv/paylines/paylines_3x5.csv"
 
+# 심볼의 배수를 레벨별로 저장할 딕셔너리
+SYMBOLS_BY_LEVEL_CSV = "csv/symbols/symbols_by_level.csv"
+
 # 사용자 데이터 저장을 위한 딕셔너리
 users_data = {}
 
@@ -132,13 +135,13 @@ def calculate_level(xp):
             break
     return current_level
 
-def spin_slot_machine(board_size):
-    # 슬롯 머신 릴을 무작위로 회전
+def spin_slot_machine(board_size, level_range):
+    # 슬롯 머신 릴을 회전
     reels = []
-    symbols = list(symbol_probabilities.keys())
-    weights = list(symbol_probabilities.values())
+    symbols = list(symbol_probabilities[level_range].keys())
+    weights = list(symbol_probabilities[level_range].values())  # 딕셔너리의 값들을 리스트로 변환
     for _ in range(board_size[0]):
-        row = random.choices(symbols, weights, k=board_size[1])
+        row = random.choices(symbols, weights=weights, k=board_size[1])
         reels.append(row)
     return reels
 
@@ -151,52 +154,37 @@ def display_reels(reels, spin_number=None):
         print(" | ".join(row))
     print()
 
-def calculate_win(reels, selected_paylines, bet_size, board_size):
-    # 슬롯 머신에서 당첨 배수를 계산하는 함수
-    total_winnings = 0
-    winning_lines = []
-
-    # 선택한 페이라인에서만 승리 계산
-    for line in selected_paylines:
-        positions = paylines[line]
-        symbols_in_line = [reels[row][col] for row, col in positions]
+def calculate_win(reels, selected_paylines, bet_size, board_size, current_symbols):
+    winnings = 0
+    for payline in selected_paylines:
+        # payline의 길이가 board_size[1]보다 작은지 확인
+        if len(payline) != board_size[1]:
+            print(f"Invalid payline length: {len(payline)}. Expected: {board_size[1]}")
+            continue
         
-        if board_size == (3, 3):
-            # 3개의 연속된 항목이 모두 같은 경우
-            if len(set(symbols_in_line)) == 1:
-                winning_symbol = symbols_in_line[0]
-                winning_lines.append((winning_symbol, 1.0))  # 100% 당첨
-        elif board_size == (3, 4):
-            # 4개의 연속된 항목이 모두 같은 경우
-            if len(set(symbols_in_line)) == 1:
-                winning_symbol = symbols_in_line[0]
-                winning_lines.append((winning_symbol, 4))  # 4개 당첨
-            # 3개의 연속된 항목이 같은 경우
-            elif len(set(symbols_in_line[:3])) == 1 or len(set(symbols_in_line[1:])) == 1:
-                winning_symbol = symbols_in_line[0] if len(set(symbols_in_line[:3])) == 1 else symbols_in_line[1]
-                winning_lines.append((winning_symbol, 3))  # 3개 당첨
-        elif board_size == (3, 5):
-            # 5개의 연속된 항목이 모두 같은 경우
-            if len(set(symbols_in_line)) == 1:
-                winning_symbol = symbols_in_line[0]
-                winning_lines.append((winning_symbol, 5))  # 5개 당첨
-            # 4개의 연속된 항목이 같은 경우
-            elif len(set(symbols_in_line[:4])) == 1 or len(set(symbols_in_line[1:])) == 1:
-                winning_symbol = symbols_in_line[0] if len(set(symbols_in_line[:4])) == 1 else symbols_in_line[1]
-                winning_lines.append((winning_symbol, 4))  # 4개 당첨
-            # 3개의 연속된 항목이 같은 경우
-            elif len(set(symbols_in_line[:3])) == 1 or len(set(symbols_in_line[2:])) == 1:
-                winning_symbol = symbols_in_line[0] if len(set(symbols_in_line[:3])) == 1 else symbols_in_line[2]
-                winning_lines.append((winning_symbol, 3))  # 3개 당첨
-
-    # 각 승리 라인에 대해 당첨 심볼의 배당률을 퍼센트로 계산
-    for symbol, multiplier in winning_lines:
-        if board_size == (3, 3):
-            total_winnings += (symbol_multipliers[symbol] / 100) * bet_size * multiplier
-        else:
-            total_winnings += (symbol_multipliers[symbol][multiplier] / 100) * bet_size
+        try:
+            symbols_in_line = [reels[col][payline[col]] for col in range(board_size[1])]
+            
+            # Count consecutive symbols from left to right
+            consecutive_count = 1
+            first_symbol = symbols_in_line[0]
+            for symbol in symbols_in_line[1:]:
+                if symbol == first_symbol:
+                    consecutive_count += 1
+                else:
+                    break
+            
+            # Calculate win based on consecutive symbols
+            if consecutive_count >= 3:
+                multiplier = current_symbols[first_symbol][consecutive_count]
+                win = bet_size * multiplier
+                winnings += win
+                print(f"당첨! 페이라인 {payline}: {first_symbol} x {consecutive_count} = {win} 포인트")
+        except IndexError as e:
+            print(f"IndexError: {e} - Check payline and reels configuration.")
+            continue
     
-    return total_winnings
+    return winnings
 
 def calculate_expected_value(board_size):
     # 각 심볼의 출현 확률을 총합으로 정규화
@@ -280,10 +268,44 @@ def update_user_charges(user_data):
     user_data['free_charges'] = 3  # 모든 유저에게 동일하게 3회 제공
     user_data['ad_free_charges'] = 3  # 광고 충전도 3회로 고정
 
+def load_symbols_by_level():
+    global symbol_multipliers, symbol_probabilities
+    symbol_multipliers = {}
+    symbol_probabilities = {}
+    
+    if os.path.exists(SYMBOLS_BY_LEVEL_CSV):
+        with open(SYMBOLS_BY_LEVEL_CSV, mode='r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                level_range = row['level']
+                symbol = row['symbol']
+                count = int(row['count'])
+                multiplier_3 = int(row['multiplier_3'])
+                multiplier_4 = int(row['multiplier_4'])
+                multiplier_5 = int(row['multiplier_5'])
+                
+                if level_range not in symbol_multipliers:
+                    symbol_multipliers[level_range] = {}
+                    symbol_probabilities[level_range] = {}
+                
+                symbol_multipliers[level_range][symbol] = {
+                    3: multiplier_3,
+                    4: multiplier_4,
+                    5: multiplier_5
+                }
+                symbol_probabilities[level_range][symbol] = count
+
+        # 디버깅을 위한 출력 추가
+        print(f"Loaded symbol_multipliers: {symbol_multipliers}")
+        print(f"Loaded symbol_probabilities: {symbol_probabilities}")
+    else:
+        print(f"{SYMBOLS_BY_LEVEL_CSV} 파일을 찾을 수 없습니다.")
+
 def play_slot_machine():
     user_id = input("사용자 ID를 입력하세요: ").strip().lower()
     
     load_user_data()
+    load_symbols_by_level()
     
     if user_id == "admin":
         for board_size in [(3, 3), (3, 4), (3, 5)]:
@@ -295,15 +317,46 @@ def play_slot_machine():
 
     user_data = get_user_data(user_id)
 
-    # Determine board size based on level
+    # Determine board size and symbol set based on level
+    if user_data['level'] >= 91:
+        level_range = "91-100"
+    elif user_data['level'] >= 81:
+        level_range = "81-90"
+    elif user_data['level'] >= 71:
+        level_range = "71-80"
+    elif user_data['level'] >= 61:
+        level_range = "61-70"
+    elif user_data['level'] >= 51:
+        level_range = "51-60"
+    elif user_data['level'] >= 41:
+        level_range = "41-50"
+    elif user_data['level'] >= 31:
+        level_range = "31-40"
+    elif user_data['level'] >= 21:
+        level_range = "21-30"
+    elif user_data['level'] >= 11:
+        level_range = "11-20"
+    elif user_data['level'] >= 6:
+        level_range = "6-10"
+    else:
+        level_range = "1-5"
+
     if user_data['level'] >= 60:
         board_size = (3, 5)
     elif user_data['level'] >= 30:
         board_size = (3, 4)
     else:
         board_size = (3, 3)
+# ======================================================
+    # level_range 변수가 어떻게 설정되는지 확인하세요
+    print(f"현재 level_range: {level_range}")
     
-    load_symbol_data(board_size)
+    # symbol_multipliers 딕셔너리의 키를 출력하여 확인
+    print(f"symbol_multipliers 키: {symbol_multipliers.keys()}")
+# ======================================================
+    current_symbols = symbol_multipliers[level_range]
+    current_probabilities = symbol_probabilities[level_range]
+    
     load_paylines_data(board_size)
     xp_needed = levels[user_data['level']+1]
     print(f"현재 포인트: {user_data['points']} //// 현재 레벨: {user_data['level']} //// 현재 경험치: {user_data['xp']} /// 필요 경험치: {xp_needed}")
@@ -355,7 +408,7 @@ def play_slot_machine():
             if user_data['points'] < total_bet:
                 break
 
-            reels = spin_slot_machine(board_size)
+            reels = spin_slot_machine(board_size, level_range)
             display_reels(reels, spin_number)
 
             user_data['spin_count'] += 1
@@ -363,7 +416,8 @@ def play_slot_machine():
             user_data['points'] -= total_bet
             user_data['xp'] += total_bet  # Add xp based on total_bet
 
-            winnings = calculate_win(reels, selected_paylines, bet_size, board_size)
+            selected_paylines = [selected_paylines]  # 정수형을 리스트로 변환
+            winnings = calculate_win(reels, selected_paylines, bet_size, board_size, current_symbols)
             if winnings > 0:
                 print(f"축하합니다! 보상: {winnings} 포인트")
                 user_data['points'] += winnings
